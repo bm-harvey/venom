@@ -1,4 +1,5 @@
-use crate::task;
+use crate::task::{self, Task};
+use datetime::LocalDateTime;
 use task::TaskDB;
 
 #[derive(Debug, Default)]
@@ -16,11 +17,33 @@ impl App {
     }
     pub fn new_example() -> Self {
         let mut result = Self::default();
-        result.task_db.add_task("task 1", Prioity::High); 
-        result.task_db.add_task("task 2", Prioity::Low); 
-        result.task_db.add_task("task 3", Prioity::Medium); 
-        result.task_db.add_task("task 4", Prioity::Low); 
-        result.task_db.add_task("task 5", Prioity::Medium); 
+
+        let date = datetime::LocalDate::ymd(2024, datetime::Month::February, 13).unwrap();
+        let time = datetime::LocalTime::hm(12, 30).unwrap();
+        let date_time = datetime::LocalDateTime::new(date, time);
+
+        let example_task_1 = Task::builder()
+            .with_title("Do Homework")
+            .with_summary("Problems 1-7 on page 323 of Krane")
+            .with_priority(Prioity::Medium)
+            .with_due_date(Some(date))
+            .build();
+
+        let example_task_2 = Task::builder()
+            .with_title("Call Doctor")
+            .with_summary("(123) 456-7890")
+            .with_priority(Prioity::Low)
+            .build();
+
+        let example_task_3 = Task::builder()
+            .with_title("Write Paper")
+            .with_summary("Section 4 requires major revision")
+            .with_priority(Prioity::High)
+            .build();
+
+        result.task_db.add_task(example_task_1);
+        result.task_db.add_task(example_task_2);
+        result.task_db.add_task(example_task_3);
 
         result
     }
