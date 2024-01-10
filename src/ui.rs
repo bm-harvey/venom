@@ -4,12 +4,68 @@ use crate::app::App;
 use crate::task::Priority;
 //use datetime::DatePiece;
 use ratatui::{
-    prelude::{Constraint, Direction, Frame, Layout, Line, Span, Text},
+    prelude::{Constraint, Direction, Frame, Layout, Line, Span},
     style::{Color, Style, Stylize},
     widgets::{Block, BorderType, Borders, Padding, Paragraph, Row, Table},
 };
 
 pub fn render(app: &mut App, f: &mut Frame) {
+    let layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
+        .split(f.size());
+
+    let main_table = main_table(app);
+    let summary_block = summary_block(app);
+
+    f.render_widget(main_table, layout[0]);
+    f.render_widget(summary_block, layout[1]);
+}
+
+fn summary_block(app: &App) -> Paragraph {
+    let active_task = app.task_db.task(app.selected_task_idx).unwrap();
+    let prio = active_task.priority();
+    let (color, word) = prio.formatting();
+
+    let mut summary_text = vec![
+        Line::raw(format!("Title   : {}", active_task.title())),
+        Line::raw(format!(
+            "Due Date: {} {}",
+            active_task.date_string(),
+            active_task.time_string()
+        )),
+        Line::from(vec![
+            Span::raw("Priority: "),
+            Span::styled(word, Style::default().fg(color)),
+        ]),
+    ];
+
+    summary_text.push(Line::from(vec![
+        Span::raw("Label   : "),
+        match active_task.label() {
+            None => Span::default(),
+            Some(label) => label.as_span(),
+        },
+    ]));
+
+    summary_text.push(Line::default());
+    summary_text.push(Line::raw("Notes   :"));
+    active_task
+        .notes()
+        .lines()
+        .map(Line::raw)
+        .for_each(|line| summary_text.push(line));
+
+    Paragraph::new(summary_text).block(
+        Block::default()
+            .title("Summary")
+            .padding(Padding::new(1, 1, 1, 1))
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded),
+    )
+}
+
+fn main_table(app: &App) -> Table {
     let header_style = Style::default().fg(Color::default()).underlined();
 
     let due_date_col_name = "Due Date".to_string();
@@ -114,49 +170,5 @@ pub fn render(app: &mut App, f: &mut Frame) {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded),
     );
-
-    let active_task = app.task_db.task(app.selected_task_idx).unwrap();
-    let active_priority = active_task.priority();
-
-    let mut summary_text = vec![
-        Line::raw(format!("Title   : {}", active_task.title())),
-        Line::raw(format!(
-            "Due Date: {} {}",
-            active_task.date_string(),
-            active_task.time_string()
-        )),
-        Line::from(vec![Span::raw("Priority: "), active_priority.as_span()]),
-    ];
-
-    summary_text.push(Line::from(vec![
-        Span::raw("Label   : "),
-        match active_task.label() {
-            None => Span::default(),
-            Some(label) => label.as_span(),
-        },
-    ]));
-
-    summary_text.push(Line::default());
-    summary_text.push(Line::raw("Notes   :"));
-    active_task
-        .notes()
-        .lines()
-        .map(Line::raw)
-        .for_each(|line| summary_text.push(line));
-
-    let summary_block = Paragraph::new(summary_text).block(
-        Block::default()
-            .title("Summary")
-            .padding(Padding::new(1, 1, 1, 1))
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded),
-    );
-
-    let layout = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
-        .split(f.size());
-
-    f.render_widget(main_table, layout[0]);
-    f.render_widget(summary_block, layout[1]);
+    main_table
 }

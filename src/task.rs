@@ -153,7 +153,7 @@ impl Priority {
         Line::styled(word, Style::default().fg(color))
     }
 
-    fn formatting(&self) -> (Color, String) {
+    pub fn formatting(&self) -> (Color, String) {
         match self {
             Self::None => (Color::default(), "".to_string()),
             Self::Low => (Color::Green, "Low".to_string()),

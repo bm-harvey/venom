@@ -23,7 +23,6 @@ impl App {
         let personal_label = Rc::new(TaskLabel::new("Personal", "PSNL", Color::Blue));
         let research_label = Rc::new(TaskLabel::new("Research", "RSCH", Color::LightMagenta));
 
-
         let date = datetime::LocalDate::ymd(2024, datetime::Month::February, 13).unwrap();
         let time = datetime::LocalTime::hm(12, 30).unwrap();
 
@@ -102,5 +101,10 @@ impl App {
         } else {
             self.selected_task_idx - 1
         }
+    }
+
+    pub fn add_task(&mut self) {
+        let task = Task::builder().with_title("Added Task").build();
+        self.task_db.add_task(task);
     }
 }
