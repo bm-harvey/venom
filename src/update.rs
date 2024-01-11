@@ -10,8 +10,8 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
                 app.quit()
             }
         }
-        KeyCode::Right | KeyCode::Char('j') => app.increment_task_idx(),
-        KeyCode::Left | KeyCode::Char('k') => app.decrement_task_idx(),
+        KeyCode::Down | KeyCode::Char('j') => app.increment_task_idx(),
+        KeyCode::Up | KeyCode::Char('k') => app.decrement_task_idx(),
         KeyCode::Char('a') => app.add_task(),
         _ => {}
     };

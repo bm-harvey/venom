@@ -22,6 +22,7 @@ impl App {
 
         let personal_label = Rc::new(TaskLabel::new("Personal", "PSNL", Color::Blue));
         let research_label = Rc::new(TaskLabel::new("Research", "RSCH", Color::LightMagenta));
+        let class_label = Rc::new(TaskLabel::new("Class", "CLSS", Color::Rgb(200, 120, 0)));
 
         let date = datetime::LocalDate::ymd(2024, datetime::Month::February, 13).unwrap();
         let time = datetime::LocalTime::hm(12, 30).unwrap();
@@ -32,6 +33,7 @@ impl App {
             .with_priority(Priority::Medium)
             .with_due_date(Some(date))
             .with_due_time(Some(time))
+            .with_label(Some(class_label.clone()))
             .build();
 
         let date = datetime::LocalDate::ymd(2024, datetime::Month::April, 3).unwrap();
@@ -58,6 +60,7 @@ impl App {
 
         result.labels.push(personal_label);
         result.labels.push(research_label);
+        result.labels.push(class_label);
 
         result.task_db.add_task(example_task_1);
         result.task_db.add_task(example_task_2);
