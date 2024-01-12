@@ -6,17 +6,23 @@ use ratatui::{
     text::{Line, Span, Text},
 };
 
+use crate::app::EditableTaskProperty;
+
 #[derive(Debug, Default)]
 pub struct TaskDB {
-    tasks: Vec<Task>,
+    tasks: Vec<Rc<Task>>,
 }
 
 impl TaskDB {
     pub fn new() -> Self {
         Self::default()
     }
-    pub fn tasks(&self) -> &[Task] {
+    pub fn tasks(&self) -> &[Rc<Task>] {
         &self.tasks
+    }
+
+    pub fn tasks_mut(&mut self) -> &mut [Rc<Task>] {
+        &mut self.tasks
     }
 
     pub fn len(&self) -> usize {
@@ -27,16 +33,20 @@ impl TaskDB {
     }
 
     pub fn add_default(&mut self) -> &mut Self {
-        self.tasks.push(Task::default());
+        self.tasks.push(Rc::new(Task::default()));
         self
     }
 
-    pub fn task(&self, idx: usize) -> Option<&Task> {
-        self.tasks.get(idx)
+    pub fn task(&self, idx: usize) -> Option<Rc<Task>> {
+        if idx < self.tasks.len() {
+            Some(self.tasks[idx].clone())
+        } else {
+            None
+        }
     }
 
     pub fn add_task(&mut self, task: Task) -> &mut Self {
-        self.tasks.push(task);
+        self.tasks.push(Rc::new(task));
         self
     }
 }
@@ -60,6 +70,16 @@ impl Task {
             due_date: None,
             due_time: None,
             label: None,
+        }
+    }
+
+    pub fn text_to_edit(&self, property: EditableTaskProperty) -> String {
+        match property {
+            EditableTaskProperty::Title => self.title().to_string(),
+            EditableTaskProperty::Notes => self.notes().to_string(),
+            EditableTaskProperty::DueDate => {
+                format!("{} {}", self.date_string(), self.time_string())
+            }
         }
     }
 
@@ -253,7 +273,7 @@ impl TaskLabel {
     }
     pub fn as_span(&self) -> Span {
         Span::styled(
-            format!("{} ({})", self.long_name(), self.short_name_string()),
+            format!("{} ({})", self.long_name().clone(), self.short_name_string()),
             Style::default().fg(self.color),
         )
     }

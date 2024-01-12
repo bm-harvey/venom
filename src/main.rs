@@ -4,6 +4,7 @@ pub mod ui;
 pub mod tui;
 pub mod update;
 pub mod task;
+pub mod text_editor;
 
 use app::App;
 use color_eyre::Result;
@@ -24,7 +25,7 @@ fn main() -> Result<()> {
     tui.enter()?;
 
     // Start the main loop.
-    while !app.should_quit {
+    while !app.should_quit() {
         // Render the user interface.
         tui.draw(&mut app)?;
         // Handle events.

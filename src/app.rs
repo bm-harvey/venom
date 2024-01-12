@@ -1,15 +1,122 @@
 use std::rc::Rc;
 
 use crate::task::{self, Task, TaskLabel};
+use edtui::{EditorState, EditorView, Lines};
 use ratatui::style::Color;
+use strum::IntoEnumIterator;
 use task::TaskDB;
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct App {
-    pub should_quit: bool,
-    pub task_db: TaskDB,
-    pub labels: Vec<Rc<TaskLabel>>,
-    pub selected_task_idx: usize,
+    mode: AppMode,
+    should_quit: bool,
+    task_db: TaskDB,
+    labels: Vec<Rc<TaskLabel>>,
+    selected_task_idx: usize,
+    edit_task_popup: Option<EditTaskPopup>,
+}
+
+#[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]
+pub enum AppMode {
+    #[default]
+    TaskView,
+    EditPopup,
+}
+
+#[derive(Default, Clone)]
+pub struct EditTaskPopup {
+    property: EditableTaskProperty,
+    text_editor: EditorState,
+    focus: EditTaskFocus,
+}
+
+impl EditTaskPopup {
+    pub fn property(&self) -> EditableTaskProperty {
+        self.property
+    }
+
+    pub fn focus(&self) -> EditTaskFocus {
+        self.focus
+    }
+    pub fn set_focus(&mut self, focus: EditTaskFocus) -> &mut Self {
+        self.focus = focus;
+        self
+    }
+
+    pub fn set_property(&mut self, property: EditableTaskProperty) -> &mut Self {
+        self.property = property;
+        self
+    }
+
+    pub fn decrement_property(&mut self) -> &mut Self {
+        let properties = EditableTaskProperty::iter().collect::<Vec<_>>();
+        let current_idx = properties
+            .iter()
+            .position(|&p| p == self.property())
+            .unwrap();
+        let idx = if current_idx == 0 {
+            properties.len() - 1
+        } else {
+            current_idx - 1
+        };
+
+        self.property = properties[idx];
+        self
+    }
+    pub fn increment_property(&mut self) -> &mut Self {
+        let properties = EditableTaskProperty::iter().collect::<Vec<_>>();
+        let current_idx = properties
+            .iter()
+            .position(|&p| p == self.property())
+            .unwrap();
+        let idx = if current_idx == properties.len() - 1 {
+            0
+        } else {
+            current_idx + 1
+        };
+        self.property = properties[idx];
+        self
+    }
+
+    pub fn load_text(&mut self, text: &str) -> &mut Self {
+        self.text_editor = EditorState::new(Lines::from(text));
+        self
+    }
+
+    pub fn text_editor_widget(&mut self) -> edtui::EditorView {
+        EditorView::new(self.text_editor_mut())
+    }
+
+    pub fn text_editor_mut(&mut self) -> &mut EditorState {
+        &mut self.text_editor
+    }
+}
+
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    PartialOrd,
+    PartialEq,
+    Eq,
+    strum::EnumIter,
+    strum::Display,
+    strum::EnumString,
+    strum::EnumIs,
+)]
+pub enum EditableTaskProperty {
+    #[default]
+    Title,
+    Notes,
+    DueDate,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialOrd, PartialEq, Eq)]
+pub enum EditTaskFocus {
+    #[default]
+    Fields,
+    Edit,
 }
 
 use crate::task::Priority;
@@ -17,6 +124,30 @@ impl App {
     pub fn new() -> Self {
         Self::default()
     }
+
+    pub fn should_quit(&self) -> bool {
+        self.should_quit
+    }
+    pub fn task_db(&self) -> &TaskDB {
+        &self.task_db
+    }
+    pub fn selected_task_idx(&self) -> usize {
+        self.selected_task_idx
+    }
+    pub fn selected_task(&self) -> Rc<Task> {
+        self.task_db.tasks()[self.selected_task_idx].clone()
+    }
+    pub fn edit_task_popup(&self) -> &Option<EditTaskPopup> {
+        &self.edit_task_popup
+    }
+    pub fn edit_task_popup_mut(&mut self) -> &mut Option<EditTaskPopup> {
+        &mut self.edit_task_popup
+    }
+    pub fn set_edit_task_popup(&mut self, popup: Option<EditTaskPopup>) -> &mut Self {
+        self.edit_task_popup = popup;
+        self
+    }
+
     pub fn new_example() -> Self {
         let mut result = Self::default();
 
@@ -78,6 +209,14 @@ impl App {
         self.should_quit = true;
     }
 
+    pub fn mode(&self) -> AppMode {
+        self.mode
+    }
+
+    pub fn set_mode(&mut self, mode: AppMode) {
+        self.mode = mode;
+    }
+
     pub fn increment_task_idx(&mut self) {
         if self.task_db.is_empty() {
             self.selected_task_idx = 0;
@@ -109,5 +248,10 @@ impl App {
     pub fn add_task(&mut self) {
         let task = Task::builder().with_title("Added Task").build();
         self.task_db.add_task(task);
+    }
+
+    pub fn edit_task(&mut self) {
+        self.set_edit_task_popup(Some(EditTaskPopup::default()));
+        self.mode = AppMode::EditPopup;
     }
 }
