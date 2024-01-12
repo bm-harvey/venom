@@ -1,16 +1,15 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use edtui::input::key;
 use edtui::Input;
 
-use crate::app::App;
-use crate::app::AppMode;
-use crate::app::EditTaskFocus;
+use crate::app::Venom;
+use crate::app::VenomFocus;
+use crate::edit_task_popup::EditTaskFocus;
 
 type KC = KeyCode;
 
-pub fn update(app: &mut App, key_event: KeyEvent) {
-    match app.mode() {
-        AppMode::TaskView => {
+pub fn update(app: &mut Venom, key_event: KeyEvent) {
+    match app.focus() {
+        VenomFocus::MainView => {
             match key_event.code {
                 KC::Esc | KC::Char('q') => app.quit(),
                 KC::Char('c') | KC::Char('C') => {
@@ -25,58 +24,55 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
                 _ => {}
             };
         }
-        AppMode::EditPopup => {
-            let popup = app.edit_task_popup_mut();
-            if popup.is_none() {
-                return;
-            }
-            let popup = popup.as_mut().unwrap();
-            let focus = popup.focus();
+        VenomFocus::EditPopup(popup) => {
+            let focus = popup.borrow().focus();
             match focus {
                 EditTaskFocus::Edit => match key_event.code {
-                    KC::Esc | KC::Char('q') => {
-                        popup.set_focus(EditTaskFocus::Fields);
+                    KC::Esc => {
+                        if popup.borrow().text_editor().mode == edtui::EditorMode::Normal {
+                            popup.borrow_mut().set_focus(EditTaskFocus::Fields);
+                        } else {
+                            popup.borrow_mut().text_editor_mut().mode = edtui::EditorMode::Normal
+                        }
+                    }
+                    KC::Char('c') => {
+                        if key_event.modifiers == KeyModifiers::CONTROL {
+                            if popup.borrow().text_editor().mode == edtui::EditorMode::Normal {
+                                popup.borrow_mut().set_focus(EditTaskFocus::Fields);
+                            } else {
+                                popup.borrow_mut().text_editor_mut().mode =
+                                    edtui::EditorMode::Normal
+                            }
+                        }
                     }
                     _ => {
-                        let state = popup.text_editor_mut();
                         let mut input = Input::default();
-                        input.on_key(key_event, state);
+                        input.on_key(key_event, popup.borrow_mut().text_editor_mut());
                     }
                 },
-
                 EditTaskFocus::Fields => {
                     match key_event.code {
                         KC::Esc | KC::Char('q') => {
-                            app.set_edit_task_popup(None);
-                            app.set_mode(AppMode::TaskView);
+                            app.set_mode(VenomFocus::MainView);
                         }
                         KC::Char('c') | KC::Char('C') => {
                             if key_event.modifiers == KeyModifiers::CONTROL {
-                                app.set_edit_task_popup(None);
-                                app.set_mode(AppMode::TaskView);
+                                app.set_mode(VenomFocus::MainView);
                             }
                         }
                         KC::Down | KC::Char('j') => {
-                            popup.increment_property();
-                            let property = popup.property();
-                            let text = app.selected_task().text_to_edit(property.clone());
-                            popup.load_text(&text);
+                            popup.borrow_mut().increment_property();
+                            let property = popup.borrow().property();
+                            let text = app.selected_task().text_to_edit(property);
+                            popup.borrow_mut().load_text(&text);
                         }
                         KC::Up | KC::Char('k') => {
-                            popup.decrement_property();
-                            let text = app.selected_task().text_to_edit(popup.property());
-                            popup.load_text(&text);
+                            popup.borrow_mut().decrement_property();
+                            let text = app.selected_task().text_to_edit(popup.borrow().property());
+                            popup.borrow_mut().load_text(&text);
                         }
                         KC::Enter => {
-                            let popup = app.edit_task_popup_mut();
-                            if let Some(popup) = popup {
-                                match popup.focus() {
-                                    EditTaskFocus::Fields => {
-                                        popup.set_focus(EditTaskFocus::Edit);
-                                    }
-                                    _ => {}
-                                }
-                            }
+                            popup.borrow_mut().set_focus(EditTaskFocus::Edit);
                         }
                         _ => {}
                     };

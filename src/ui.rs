@@ -1,6 +1,8 @@
 use std::vec;
 
-use crate::app::{self, App, AppMode, EditTaskFocus};
+use crate::app::{self, Venom, VenomFocus};
+
+use crate::edit_task_popup::EditTaskFocus;
 
 use crate::task::Priority;
 use ratatui::widgets::Clear;
@@ -12,7 +14,7 @@ use ratatui::{
 };
 use strum::IntoEnumIterator;
 
-pub fn render(app: &mut App, f: &mut Frame) {
+pub fn render(app: &mut Venom, f: &mut Frame) {
     let layout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
@@ -24,16 +26,15 @@ pub fn render(app: &mut App, f: &mut Frame) {
     f.render_widget(main_table, layout[0]);
     f.render_widget(summary_block, layout[1]);
 
-    if app.mode() == AppMode::EditPopup {
+    if let VenomFocus::EditPopup(_) = app.focus() {
         render_edit_task_popup(app, f);
     }
 }
 
-fn render_edit_task_popup(app: &mut App, frame: &mut Frame) {
+fn render_edit_task_popup(app: &mut Venom, frame: &mut Frame) {
     let area = centered_rect(frame.size(), 60, 50);
 
-    let popup = app.edit_task_popup_mut();
-    if let Some(popup) = popup {
+    if let VenomFocus::EditPopup(popup) = app.focus() {
         let active_color = Color::default();
         let inactive_color = Color::DarkGray;
         let highlight_color = Color::Rgb(0, 50, 200);
@@ -44,7 +45,7 @@ fn render_edit_task_popup(app: &mut App, frame: &mut Frame) {
         let mut field_style = active_style;
         let mut edit_style = inactive_style;
 
-        if popup.focus() == EditTaskFocus::Edit {
+        if popup.borrow().focus() == EditTaskFocus::Edit {
             std::mem::swap(&mut field_style, &mut edit_style);
         }
 
@@ -53,35 +54,36 @@ fn render_edit_task_popup(app: &mut App, frame: &mut Frame) {
             .constraints([Constraint::Percentage(20), Constraint::Percentage(80)])
             .split(area);
 
-        let field_block = Block::default()
+        let mut field_block = Block::default()
             .title(" Field ")
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .set_style(field_style);
 
-        let edit_block = Block::default()
-            .title(format!(" Editing: {} ", popup.property()))
+        let mut edit_block = Block::default()
+            .title(format!(" Editing: {} ", popup.borrow().property()))
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .set_style(edit_style);
 
-        //let edit_paragraph = match popup.property() {
-        //app::EditableTaskProperty::Title => {
-        //Paragraph::new(Line::styled(task.title(), edit_style))
-        //},
-        //app::EditableTaskProperty::Notes => {
-        //Paragraph::new(Line::styled(task.notes(), edit_style))
-        //},
-        //app::EditableTaskProperty::DueDate => {
-        //Paragraph::new(Line::styled(format!("{} {}", task.date_string(), task.time_string()), edit_style))
-        //},
-        ////_ => Paragraph::default(),
-        //}
-        //.block(edit_block);
-        //
+        match popup.borrow().focus() {
+            EditTaskFocus::Fields => field_block = field_block.border_type(BorderType::Thick),
+            EditTaskFocus::Edit => edit_block = edit_block.border_type(BorderType::Thick),
+        }
 
-        let property = popup.property();
-        let edit_paragraph = popup.text_editor_widget();
+        let property = popup.borrow().property();
+        let mut pop_borrow = popup.borrow_mut();
+
+        let editor_theme = edtui::EditorTheme::default()
+            .block(edit_block)
+            .base(Style::default())
+            .cursor_style(match pop_borrow.text_editor().mode {
+                edtui::EditorMode::Insert => Style::default().bg(Color::LightCyan).fg(Color::Black),
+                _ => Style::default().fg(Color::Black).bg(Color::White),
+            })
+            .hide_status_line();
+
+        let edit_paragraph = pop_borrow.text_editor_widget().theme(editor_theme);
 
         let mut field_rows = vec![];
         for field in app::EditableTaskProperty::iter() {
@@ -102,7 +104,7 @@ fn render_edit_task_popup(app: &mut App, frame: &mut Frame) {
     }
 }
 
-fn summary_block(app: &App) -> Paragraph {
+fn summary_block(app: &Venom) -> Paragraph {
     let active_task = app.task_db().task(app.selected_task_idx()).unwrap();
     let prio = active_task.priority();
     let (color, word) = prio.formatting();
@@ -149,7 +151,7 @@ fn summary_block(app: &App) -> Paragraph {
     )
 }
 
-fn main_table<'a>(app: &'a App) -> Table<'a> {
+fn main_table<'a>(app: &'a Venom) -> Table<'a> {
     let header_style = Style::default().fg(Color::default()).underlined();
 
     let due_date_col_name = "Due Date".to_string();

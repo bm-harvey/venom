@@ -5,8 +5,9 @@ pub mod tui;
 pub mod update;
 pub mod task;
 pub mod text_editor;
+pub mod edit_task_popup;
 
-use app::App;
+use app::Venom;
 use color_eyre::Result;
 use event::{Event, EventHandler};
 use ratatui::{backend::CrosstermBackend, Terminal};
@@ -15,7 +16,7 @@ use update::update;
 
 fn main() -> Result<()> {
     // Create an application.
-    let mut app = App::new_example();
+    let mut app = Venom::new_example();
 
     // Initialize the terminal user interface.
     let backend = CrosstermBackend::new(std::io::stderr());

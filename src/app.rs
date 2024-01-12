@@ -1,95 +1,26 @@
-use std::rc::Rc;
-
+use crate::edit_task_popup::EditTaskPopup;
 use crate::task::{self, Task, TaskLabel};
-use edtui::{EditorState, EditorView, Lines};
 use ratatui::style::Color;
-use strum::IntoEnumIterator;
+use std::cell::RefCell;
+use std::rc::Rc;
 use task::TaskDB;
 
+/// The global app state
 #[derive(Default)]
-pub struct App {
-    mode: AppMode,
+pub struct Venom {
     should_quit: bool,
     task_db: TaskDB,
     labels: Vec<Rc<TaskLabel>>,
     selected_task_idx: usize,
-    edit_task_popup: Option<EditTaskPopup>,
+    focus: VenomFocus,
 }
 
-#[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]
-pub enum AppMode {
-    #[default]
-    TaskView,
-    EditPopup,
-}
-
+/// The Current Focus of a Venom Application
 #[derive(Default, Clone)]
-pub struct EditTaskPopup {
-    property: EditableTaskProperty,
-    text_editor: EditorState,
-    focus: EditTaskFocus,
-}
-
-impl EditTaskPopup {
-    pub fn property(&self) -> EditableTaskProperty {
-        self.property
-    }
-
-    pub fn focus(&self) -> EditTaskFocus {
-        self.focus
-    }
-    pub fn set_focus(&mut self, focus: EditTaskFocus) -> &mut Self {
-        self.focus = focus;
-        self
-    }
-
-    pub fn set_property(&mut self, property: EditableTaskProperty) -> &mut Self {
-        self.property = property;
-        self
-    }
-
-    pub fn decrement_property(&mut self) -> &mut Self {
-        let properties = EditableTaskProperty::iter().collect::<Vec<_>>();
-        let current_idx = properties
-            .iter()
-            .position(|&p| p == self.property())
-            .unwrap();
-        let idx = if current_idx == 0 {
-            properties.len() - 1
-        } else {
-            current_idx - 1
-        };
-
-        self.property = properties[idx];
-        self
-    }
-    pub fn increment_property(&mut self) -> &mut Self {
-        let properties = EditableTaskProperty::iter().collect::<Vec<_>>();
-        let current_idx = properties
-            .iter()
-            .position(|&p| p == self.property())
-            .unwrap();
-        let idx = if current_idx == properties.len() - 1 {
-            0
-        } else {
-            current_idx + 1
-        };
-        self.property = properties[idx];
-        self
-    }
-
-    pub fn load_text(&mut self, text: &str) -> &mut Self {
-        self.text_editor = EditorState::new(Lines::from(text));
-        self
-    }
-
-    pub fn text_editor_widget(&mut self) -> edtui::EditorView {
-        EditorView::new(self.text_editor_mut())
-    }
-
-    pub fn text_editor_mut(&mut self) -> &mut EditorState {
-        &mut self.text_editor
-    }
+pub enum VenomFocus {
+    #[default]
+    MainView,
+    EditPopup(Rc<RefCell<EditTaskPopup>>),
 }
 
 #[derive(
@@ -112,15 +43,8 @@ pub enum EditableTaskProperty {
     DueDate,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialOrd, PartialEq, Eq)]
-pub enum EditTaskFocus {
-    #[default]
-    Fields,
-    Edit,
-}
-
 use crate::task::Priority;
-impl App {
+impl Venom {
     pub fn new() -> Self {
         Self::default()
     }
@@ -136,16 +60,6 @@ impl App {
     }
     pub fn selected_task(&self) -> Rc<Task> {
         self.task_db.tasks()[self.selected_task_idx].clone()
-    }
-    pub fn edit_task_popup(&self) -> &Option<EditTaskPopup> {
-        &self.edit_task_popup
-    }
-    pub fn edit_task_popup_mut(&mut self) -> &mut Option<EditTaskPopup> {
-        &mut self.edit_task_popup
-    }
-    pub fn set_edit_task_popup(&mut self, popup: Option<EditTaskPopup>) -> &mut Self {
-        self.edit_task_popup = popup;
-        self
     }
 
     pub fn new_example() -> Self {
@@ -209,12 +123,12 @@ impl App {
         self.should_quit = true;
     }
 
-    pub fn mode(&self) -> AppMode {
-        self.mode
+    pub fn focus(&self) -> &VenomFocus {
+        &self.focus
     }
 
-    pub fn set_mode(&mut self, mode: AppMode) {
-        self.mode = mode;
+    pub fn set_mode(&mut self, mode: VenomFocus) {
+        self.focus = mode;
     }
 
     pub fn increment_task_idx(&mut self) {
@@ -248,10 +162,16 @@ impl App {
     pub fn add_task(&mut self) {
         let task = Task::builder().with_title("Added Task").build();
         self.task_db.add_task(task);
+        self.selected_task_idx = self.task_db.len() - 1;
+        self.edit_task();
     }
 
     pub fn edit_task(&mut self) {
-        self.set_edit_task_popup(Some(EditTaskPopup::default()));
-        self.mode = AppMode::EditPopup;
+        let mut popup = Rc::new(RefCell::new(EditTaskPopup::default()));
+        let property = popup.borrow().property();
+        popup
+            .borrow_mut()
+            .load_text(&self.selected_task().text_to_edit(property));
+        self.focus = VenomFocus::EditPopup(popup);
     }
 }
