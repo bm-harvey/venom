@@ -106,15 +106,15 @@ fn render_edit_task_popup(app: &mut Venom, frame: &mut Frame) {
 
 fn summary_block(app: &Venom) -> Paragraph {
     let active_task = app.task_db().task(app.selected_task_idx()).unwrap();
-    let prio = active_task.priority();
+    let prio = active_task.borrow().priority();
     let (color, word) = prio.formatting();
 
     let mut summary_text = vec![
-        Line::raw(format!("Title   : {}", active_task.title())),
+        Line::raw(format!("Title   : {}", active_task.borrow().title())),
         Line::raw(format!(
             "Due Date: {} {}",
-            active_task.date_string(),
-            active_task.time_string()
+            active_task.borrow().date_string(),
+            active_task.borrow().time_string()
         )),
         Line::from(vec![
             Span::raw("Priority: "),
@@ -122,8 +122,9 @@ fn summary_block(app: &Venom) -> Paragraph {
         ]),
     ];
 
-    let label = active_task.label();
-    let label = label.clone();
+    let active_task_borrow = active_task.borrow();
+    let label = active_task_borrow.label();
+    //let label = label.clone();
     summary_text.push(Line::from(vec![
         Span::raw("Label   : "),
         match label {
@@ -136,6 +137,7 @@ fn summary_block(app: &Venom) -> Paragraph {
     summary_text.push(Line::default());
     summary_text.push(Line::raw("Notes   :"));
     active_task
+        .borrow()
         .notes()
         .lines()
         .map(|line| line.to_string())
@@ -183,7 +185,7 @@ fn main_table<'a>(app: &'a Venom) -> Table<'a> {
         .map(|(idx, task)| {
             let active_task = idx == app.selected_task_idx();
 
-            let color = match task.priority() {
+            let color = match task.borrow().priority() {
                 Priority::None => Color::default(),
                 Priority::Low => Color::Green,
                 Priority::Medium => Color::Yellow,
@@ -191,17 +193,18 @@ fn main_table<'a>(app: &'a Venom) -> Table<'a> {
             };
 
             let mut label_style = Style::default();
-            if task.label().is_some() {
-                label_style = label_style.fg(task.label().as_ref().unwrap().color());
+            if task.borrow().label().is_some() {
+                label_style = label_style.fg(task.borrow().label().as_ref().unwrap().color());
             }
-            let label_col = match task.label().as_ref() {
+            let label_col = match task.borrow().label().as_ref() {
                 None => "".to_string(),
                 Some(label) => label.short_name().iter().collect::<String>(),
             };
             let label_col = Span::styled(label_col, label_style);
 
             let style = Style::default().fg(color);
-            let content_col = task.title();
+            let borrow = task.borrow();
+            let content_col = borrow.title().to_string();
             let content_col = Span::styled(content_col, style);
 
             let selected_col = if active_task {
@@ -211,8 +214,8 @@ fn main_table<'a>(app: &'a Venom) -> Table<'a> {
             };
             let selected_col = Span::styled(selected_col, style);
 
-            let due_date_col = task.date_string();
-            let due_time_col = task.time_string();
+            let due_date_col = task.borrow().date_string();
+            let due_time_col = task.borrow().time_string();
             date_constraint = std::cmp::max(date_constraint, due_date_col.len() as u16);
             time_constraint = std::cmp::max(time_constraint, due_time_col.len() as u16);
             let due_date_col = Span::styled(due_date_col, style);
@@ -234,7 +237,7 @@ fn main_table<'a>(app: &'a Venom) -> Table<'a> {
         .task_db()
         .tasks()
         .iter()
-        .map(|task| task.title().len() as u16)
+        .map(|task| task.borrow().title().len() as u16)
         .max()
         .unwrap_or(15)
         + 1;

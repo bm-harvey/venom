@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use datetime::{DatePiece, LocalDate, LocalTime, Month, TimePiece};
@@ -10,18 +11,18 @@ use crate::app::EditableTaskProperty;
 
 #[derive(Debug, Default)]
 pub struct TaskDB {
-    tasks: Vec<Rc<Task>>,
+    tasks: Vec<Rc<RefCell<Task>>>,
 }
 
 impl TaskDB {
     pub fn new() -> Self {
         Self::default()
     }
-    pub fn tasks(&self) -> &[Rc<Task>] {
+    pub fn tasks(&self) -> &[Rc<RefCell<Task>>] {
         &self.tasks
     }
 
-    pub fn tasks_mut(&mut self) -> &mut [Rc<Task>] {
+    pub fn tasks_mut(&mut self) -> &mut [Rc<RefCell<Task>>] {
         &mut self.tasks
     }
 
@@ -33,11 +34,11 @@ impl TaskDB {
     }
 
     pub fn add_default(&mut self) -> &mut Self {
-        self.tasks.push(Rc::new(Task::default()));
+        self.tasks.push(Rc::new(RefCell::new(Task::default())));
         self
     }
 
-    pub fn task(&self, idx: usize) -> Option<Rc<Task>> {
+    pub fn task(&self, idx: usize) -> Option<Rc<RefCell<Task>>> {
         if idx < self.tasks.len() {
             Some(self.tasks[idx].clone())
         } else {
@@ -46,7 +47,7 @@ impl TaskDB {
     }
 
     pub fn add_task(&mut self, task: Task) -> &mut Self {
-        self.tasks.push(Rc::new(task));
+        self.tasks.push(Rc::new(RefCell::new(task)));
         self
     }
 }
@@ -147,6 +148,11 @@ impl Task {
                 format!("{hour_string}:{min_string}")
             }
         }
+    }
+
+    pub fn set_title(&mut self, title: &str) -> &mut Self {
+        self.title = title.to_string();
+        self
     }
 }
 
@@ -273,7 +279,7 @@ impl TaskLabel {
     }
     pub fn as_span(&self) -> Span {
         Span::styled(
-            format!("{} ({})", self.long_name().clone(), self.short_name_string()),
+            format!("{} ({})", self.long_name(), self.short_name_string()),
             Style::default().fg(self.color),
         )
     }

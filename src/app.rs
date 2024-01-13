@@ -58,7 +58,7 @@ impl Venom {
     pub fn selected_task_idx(&self) -> usize {
         self.selected_task_idx
     }
-    pub fn selected_task(&self) -> Rc<Task> {
+    pub fn selected_task(&self) -> Rc<RefCell<Task>> {
         self.task_db.tasks()[self.selected_task_idx].clone()
     }
 
@@ -167,11 +167,11 @@ impl Venom {
     }
 
     pub fn edit_task(&mut self) {
-        let mut popup = Rc::new(RefCell::new(EditTaskPopup::default()));
+        let popup = Rc::new(RefCell::new(EditTaskPopup::default()));
         let property = popup.borrow().property();
         popup
             .borrow_mut()
-            .load_text(&self.selected_task().text_to_edit(property));
+            .load_text(&self.selected_task().borrow().text_to_edit(property));
         self.focus = VenomFocus::EditPopup(popup);
     }
 }

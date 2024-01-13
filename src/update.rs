@@ -1,6 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use edtui::Input;
 
+use crate::app::EditableTaskProperty;
 use crate::app::Venom;
 use crate::app::VenomFocus;
 use crate::edit_task_popup::EditTaskFocus;
@@ -20,7 +21,7 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                 KC::Down | KC::Char('j') => app.increment_task_idx(),
                 KC::Up | KC::Char('k') => app.decrement_task_idx(),
                 KC::Char('a') => app.add_task(),
-                KC::Char('e') => app.edit_task(),
+                KC::Char('e') | KC::Enter => app.edit_task(),
                 _ => {}
             };
         }
@@ -31,6 +32,19 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                     KC::Esc => {
                         if popup.borrow().text_editor().mode == edtui::EditorMode::Normal {
                             popup.borrow_mut().set_focus(EditTaskFocus::Fields);
+                            if let EditableTaskProperty::Title = popup.borrow().property() {
+                                let text = popup
+                                    .borrow()
+                                    .text_editor()
+                                    .lines
+                                    .iter()
+                                    .filter_map(|c| match c {
+                                        (Some(c), _) => Some(c),
+                                        _ => None,
+                                    })
+                                    .collect::<String>();
+                                app.selected_task().borrow_mut().set_title(&text);
+                            }
                         } else {
                             popup.borrow_mut().text_editor_mut().mode = edtui::EditorMode::Normal
                         }
@@ -39,6 +53,22 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                         if key_event.modifiers == KeyModifiers::CONTROL {
                             if popup.borrow().text_editor().mode == edtui::EditorMode::Normal {
                                 popup.borrow_mut().set_focus(EditTaskFocus::Fields);
+                                if let EditableTaskProperty::Title = popup.borrow().property() {
+                                    let text = popup
+                                        .borrow()
+                                        .text_editor()
+                                        .lines
+                                        .iter()
+                                        .filter_map(|c| match c {
+                                            (Some(c), _) => Some(c),
+                                            _ => None,
+                                        })
+                                        .collect::<String>();
+                                    app.selected_task().borrow_mut().set_title(&text);
+                                } else {
+                                    popup.borrow_mut().text_editor_mut().mode =
+                                        edtui::EditorMode::Normal
+                                }
                             } else {
                                 popup.borrow_mut().text_editor_mut().mode =
                                     edtui::EditorMode::Normal
@@ -63,12 +93,15 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                         KC::Down | KC::Char('j') => {
                             popup.borrow_mut().increment_property();
                             let property = popup.borrow().property();
-                            let text = app.selected_task().text_to_edit(property);
+                            let text = app.selected_task().borrow().text_to_edit(property);
                             popup.borrow_mut().load_text(&text);
                         }
                         KC::Up | KC::Char('k') => {
                             popup.borrow_mut().decrement_property();
-                            let text = app.selected_task().text_to_edit(popup.borrow().property());
+                            let text = app
+                                .selected_task()
+                                .borrow()
+                                .text_to_edit(popup.borrow().property());
                             popup.borrow_mut().load_text(&text);
                         }
                         KC::Enter => {
