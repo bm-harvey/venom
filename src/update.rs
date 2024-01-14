@@ -93,6 +93,9 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                                 popup.borrow_mut().text_editor_mut().mode =
                                     edtui::EditorMode::Normal
                             }
+                        } else {
+                            let mut input = Input::default();
+                            input.on_key(key_event, popup.borrow_mut().text_editor_mut());
                         }
                     }
                     _ => {
@@ -105,7 +108,7 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                         KC::Esc | KC::Char('q') => {
                             app.set_mode(VenomFocus::MainView);
                         }
-                        KC::Char('c') | KC::Char('C') => {
+                        KC::Char('c') => {
                             if key_event.modifiers == KM::CONTROL {
                                 app.set_mode(VenomFocus::MainView);
                             }
