@@ -16,7 +16,7 @@ use update::update;
 
 fn main() -> Result<()> {
     // Create an application.
-    let mut app = Venom::new_example();
+    let mut app = Venom::new();
 
     // Initialize the terminal user interface.
     let backend = CrosstermBackend::new(std::io::stderr());

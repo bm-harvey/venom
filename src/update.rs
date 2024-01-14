@@ -1,20 +1,21 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use edtui::Input;
+//use serde_json::json;
 
-use crate::app::EditableTaskProperty;
 use crate::app::Venom;
 use crate::app::VenomFocus;
 use crate::edit_task_popup::EditTaskFocus;
 
 type KC = KeyCode;
+type KM = KeyModifiers;
 
 pub fn update(app: &mut Venom, key_event: KeyEvent) {
     match app.focus() {
         VenomFocus::MainView => {
             match key_event.code {
                 KC::Esc | KC::Char('q') => app.quit(),
-                KC::Char('c') | KC::Char('C') => {
-                    if key_event.modifiers == KeyModifiers::CONTROL {
+                KC::Char('c') => {
+                    if key_event.modifiers == KM::CONTROL {
                         app.quit()
                     }
                 }
@@ -22,6 +23,10 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                 KC::Up | KC::Char('k') => app.decrement_task_idx(),
                 KC::Char('a') => app.add_task(),
                 KC::Char('e') | KC::Enter => app.edit_task(),
+                KC::Char(' ') => {
+                    app.toggle_selected_task();
+                    app.save_file();
+                }
                 _ => {}
             };
         }
@@ -32,43 +37,58 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                     KC::Esc => {
                         if popup.borrow().text_editor().mode == edtui::EditorMode::Normal {
                             popup.borrow_mut().set_focus(EditTaskFocus::Fields);
-                            if let EditableTaskProperty::Title = popup.borrow().property() {
-                                let text = popup
-                                    .borrow()
-                                    .text_editor()
-                                    .lines
-                                    .iter()
-                                    .filter_map(|c| match c {
-                                        (Some(c), _) => Some(c),
-                                        _ => None,
-                                    })
-                                    .collect::<String>();
-                                app.selected_task().borrow_mut().set_title(&text);
-                            }
+                            let mut text = String::new();
+                            let mut previous_row = 0;
+                            popup.borrow().text_editor().lines.iter().for_each(|c| {
+                                let (c, idx) = c;
+                                if idx.row > previous_row {
+                                    previous_row = idx.row;
+                                    text.push('\n');
+                                }
+                                if let Some(c) = c {
+                                    text.push(*c);
+                                }
+                            });
+                            app.selected_task()
+                                .borrow_mut()
+                                .set_property_from_str(popup.borrow().property(), &text);
+                            // write save file
+                            app.save_file();
                         } else {
                             popup.borrow_mut().text_editor_mut().mode = edtui::EditorMode::Normal
                         }
                     }
                     KC::Char('c') => {
-                        if key_event.modifiers == KeyModifiers::CONTROL {
+                        if key_event.modifiers == KM::CONTROL {
                             if popup.borrow().text_editor().mode == edtui::EditorMode::Normal {
                                 popup.borrow_mut().set_focus(EditTaskFocus::Fields);
-                                if let EditableTaskProperty::Title = popup.borrow().property() {
-                                    let text = popup
-                                        .borrow()
-                                        .text_editor()
-                                        .lines
-                                        .iter()
-                                        .filter_map(|c| match c {
-                                            (Some(c), _) => Some(c),
-                                            _ => None,
-                                        })
-                                        .collect::<String>();
-                                    app.selected_task().borrow_mut().set_title(&text);
-                                } else {
-                                    popup.borrow_mut().text_editor_mut().mode =
-                                        edtui::EditorMode::Normal
+                                let mut text = String::new();
+                                let mut previous_row = 0;
+                                popup.borrow().text_editor().lines.iter().for_each(|c| {
+                                    let (c, idx) = c;
+                                    if idx.row > previous_row {
+                                        previous_row = idx.row;
+                                        text.push('\n');
+                                    }
+                                    if let Some(c) = c {
+                                        text.push(*c);
+                                    }
+                                });
+
+                                let task = app.selected_task();
+                                match popup.borrow().property() {
+                                    crate::app::EditableTaskProperty::Label => {
+                                        let label = app.task_db().label_by_tag(&text);
+                                        task.borrow_mut().set_label(label);
+                                    }
+                                    _ => {
+                                        task.borrow_mut().set_property_from_str(
+                                            popup.borrow().property(),
+                                            &text,
+                                        );
+                                    }
                                 }
+                                app.save_file();
                             } else {
                                 popup.borrow_mut().text_editor_mut().mode =
                                     edtui::EditorMode::Normal
@@ -86,7 +106,7 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                             app.set_mode(VenomFocus::MainView);
                         }
                         KC::Char('c') | KC::Char('C') => {
-                            if key_event.modifiers == KeyModifiers::CONTROL {
+                            if key_event.modifiers == KM::CONTROL {
                                 app.set_mode(VenomFocus::MainView);
                             }
                         }

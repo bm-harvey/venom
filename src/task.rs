@@ -1,25 +1,75 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use datetime::{DatePiece, LocalDate, LocalTime, Month, TimePiece};
+use chrono::{DateTime, Local};
+use chrono::{Datelike, Timelike};
 use ratatui::{
     style::{Color, Style},
     text::{Line, Span, Text},
 };
+use serde::{Deserialize, Serialize};
 
 use crate::app::EditableTaskProperty;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct TaskDB {
     tasks: Vec<Rc<RefCell<Task>>>,
+    labels: Vec<Rc<RefCell<TaskLabel>>>,
 }
 
 impl TaskDB {
     pub fn new() -> Self {
         Self::default()
     }
+
+    pub fn remove_label(&mut self, tag: &str) {
+        let short_name = {
+            let mut result = [' '; TaskLabel::LABEL_LEN];
+            for (idx, val) in tag.chars().enumerate() {
+                if idx >= TaskLabel::LABEL_LEN {
+                    break;
+                }
+                result[idx] = val;
+            }
+            result
+        };
+
+        self.labels
+            .retain(|l| l.borrow().short_name() != short_name);
+        self.tasks.retain(|t| {
+            let binding = t.borrow();
+            let l = binding.label();
+            if let Some(l) = l {
+                l.borrow().short_name() != short_name
+            } else {
+                false
+            }
+        });
+    }
+
     pub fn tasks(&self) -> &[Rc<RefCell<Task>>] {
         &self.tasks
+    }
+
+    pub fn labels(&self) -> &[Rc<RefCell<TaskLabel>>] {
+        &self.labels
+    }
+
+    pub fn label_by_tag(&self, tag: &str) -> Option<Rc<RefCell<TaskLabel>>> {
+        let short_name = {
+            let mut result = [' '; TaskLabel::LABEL_LEN];
+            for (idx, val) in tag.chars().enumerate() {
+                if idx >= TaskLabel::LABEL_LEN {
+                    break;
+                }
+                result[idx] = val;
+            }
+            result
+        };
+        self.labels
+            .iter()
+            .find(|&l| l.borrow().short_name() == short_name)
+            .cloned()
     }
 
     pub fn tasks_mut(&mut self) -> &mut [Rc<RefCell<Task>>] {
@@ -50,16 +100,26 @@ impl TaskDB {
         self.tasks.push(Rc::new(RefCell::new(task)));
         self
     }
+
+    pub fn add_raw_label(&mut self, label: TaskLabel) -> &mut Self {
+        self.labels.push(Rc::new(RefCell::new(label)));
+        self
+    }
+
+    pub fn add_label(&mut self, label: Rc<RefCell<TaskLabel>>) -> &mut Self {
+        self.labels.push(label);
+        self
+    }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Task {
     title: String,
     priority: Priority,
     notes: String,
-    due_date: Option<LocalDate>,
-    due_time: Option<LocalTime>,
-    label: Option<Rc<TaskLabel>>,
+    due_date: Option<DateTime<chrono::Local>>,
+    label: Option<Rc<RefCell<TaskLabel>>>,
+    done: bool,
 }
 
 impl Task {
@@ -69,8 +129,8 @@ impl Task {
             priority,
             notes: "".to_string(),
             due_date: None,
-            due_time: None,
             label: None,
+            done: false,
         }
     }
 
@@ -81,6 +141,24 @@ impl Task {
             EditableTaskProperty::DueDate => {
                 format!("{} {}", self.date_string(), self.time_string())
             }
+            EditableTaskProperty::Label => match self.label() {
+                None => "".to_string(),
+                Some(label) => label.borrow().short_name().iter().collect(),
+            },
+        }
+    }
+    pub fn set_property_from_str(&mut self, property: EditableTaskProperty, value: &str) {
+        match property {
+            EditableTaskProperty::Title => {
+                self.set_title(value);
+            }
+            EditableTaskProperty::Notes => {
+                self.set_notes(value);
+            }
+            EditableTaskProperty::DueDate => {
+                self.set_date_str(value);
+            }
+            _ => {}
         }
     }
 
@@ -92,10 +170,18 @@ impl Task {
         &self.title
     }
 
-    pub fn label(&self) -> &Option<Rc<TaskLabel>> {
+    pub fn label(&self) -> &Option<Rc<RefCell<TaskLabel>>> {
         &self.label
     }
 
+    pub fn is_done(&self) -> bool {
+        self.done
+    }
+
+    pub fn toggle_done(&mut self) -> &mut Self {
+        self.done = !self.done;
+        self
+    }
     pub fn priority(&self) -> Priority {
         self.priority
     }
@@ -104,49 +190,46 @@ impl Task {
         &self.notes
     }
 
-    pub fn due_date(&self) -> Option<LocalDate> {
+    pub fn due_date(&self) -> Option<DateTime<Local>> {
         self.due_date
-    }
-    pub fn due_time(&self) -> Option<LocalTime> {
-        self.due_time
     }
 
     pub fn date_string(&self) -> String {
         match self.due_date {
             None => "".to_string(),
             Some(date) => {
-                let year_string = date.year().to_string();
-                let month_string = match date.month() {
-                    Month::January => "Jan",
-                    Month::February => "Feb",
-                    Month::March => "Mar",
-                    Month::April => "Apr",
-                    Month::May => "May",
-                    Month::June => "Jun",
-                    Month::July => "Jul",
-                    Month::August => "Aug",
-                    Month::September => "Sep",
-                    Month::October => "Oct",
-                    Month::November => "Nov",
-                    Month::December => "Dec",
+                let year_string = date.date_naive().year().to_string();
+                let month_string = match date.date_naive().month() {
+                    1 => "Jan",
+                    2 => "Feb",
+                    3 => "Mar",
+                    4 => "Apr",
+                    5 => "May",
+                    6 => "Jun",
+                    7 => "Jul",
+                    8 => "Aug",
+                    9 => "Sep",
+                    10 => "Oct",
+                    11 => "Nov",
+                    12 => "Dec",
+                    _ => unreachable!(),
                 }
                 .to_string();
 
                 let day_string = date.day().to_string();
 
-                format!("{:2} {} {}", day_string, month_string, year_string)
+                format!("{:>2} {} {}", day_string, month_string, year_string)
             }
         }
     }
     pub fn time_string(&self) -> String {
-        match self.due_time {
-            None => "".to_string(),
-            Some(time) => {
-                let hour_string = time.hour().to_string();
-                let min_string = time.minute().to_string();
-
-                format!("{hour_string}:{min_string}")
-            }
+        if let Some(date) = self.due_date() {
+            let time = date.time();
+            let hour_string = time.hour().to_string();
+            let min_string = time.minute().to_string();
+            format!("{:0>2}:{:0>2}", hour_string, min_string)
+        } else {
+            String::new()
         }
     }
 
@@ -154,9 +237,89 @@ impl Task {
         self.title = title.to_string();
         self
     }
+
+    pub fn set_label(&mut self, label: Option<Rc<RefCell<TaskLabel>>>) -> &mut Self {
+        self.label = label;
+        self
+    }
+
+    pub fn set_date_str(&mut self, date: &str) -> &mut Self {
+        let words = date.split_whitespace().collect::<Vec<_>>();
+
+        let num_words = words.len();
+
+        match num_words {
+            0 => self.set_no_date(),
+            4 => {
+                let day = words[0].parse::<u32>();
+                let month = match words[1] {
+                    "Jan" => Some(1),
+                    "Feb" => Some(2),
+                    "Mar" => Some(3),
+                    "Apr" => Some(4),
+                    "May" => Some(5),
+                    "Jun" => Some(6),
+                    "Jul" => Some(7),
+                    "Aug" => Some(8),
+                    "Sep" => Some(9),
+                    "Oct" => Some(10),
+                    "Nov" => Some(11),
+                    "Dec" => Some(12),
+                    _ => None,
+                };
+                let year = words[2].parse::<i32>();
+
+                let new_date = if day.is_err() || month.is_none() || year.is_err() {
+                    self.due_date().map(|date| date.date_naive())
+                } else {
+                    let day = day.unwrap();
+                    let month = month.unwrap();
+                    let year = year.unwrap();
+                    chrono::NaiveDate::from_ymd_opt(year, month, day)
+                };
+
+                let time = words[3].split(':').collect::<Vec<_>>();
+                let new_time = if time.len() != 2 {
+                    self.due_date().map(|date| date.time())
+                } else {
+                    let hour = time[0].parse::<u32>();
+                    let minute = time[1].parse::<u32>();
+
+                    if hour.is_err() || minute.is_err() {
+                        self.due_date().map(|date| date.time())
+                    } else {
+                        let hour = hour.unwrap();
+                        let minute = minute.unwrap();
+                        chrono::NaiveTime::from_hms_opt(hour, minute, 0)
+                    }
+                };
+
+                if new_date.is_some() && new_time.is_some() {
+                    let naive_dt = chrono::NaiveDateTime::new(new_date.unwrap(), new_time.unwrap());
+                    let date_time = naive_dt.and_local_timezone(Local).unwrap();
+                    self.set_date(&date_time)
+                } else {
+                    self
+                }
+            }
+            _ => self,
+        }
+    }
+    pub fn set_date(&mut self, date: &DateTime<Local>) -> &mut Self {
+        self.due_date = Some(*date);
+        self
+    }
+    pub fn set_no_date(&mut self) -> &mut Self {
+        self.due_date = None;
+        self
+    }
+    pub fn set_notes(&mut self, notes: &str) -> &mut Self {
+        self.notes = notes.to_string();
+        self
+    }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
 pub enum Priority {
     #[default]
     None,
@@ -218,33 +381,49 @@ impl TaskBuilder {
         self
     }
 
-    pub fn with_due_time(mut self, time: Option<LocalTime>) -> Self {
-        self.task.due_time = time;
-        self
-    }
-
-    pub fn with_due_date(mut self, date: Option<LocalDate>) -> Self {
+    pub fn with_due_date(mut self, date: Option<DateTime<Local>>) -> Self {
         self.task.due_date = date;
         self
     }
 
-    pub fn with_label(mut self, label: Option<Rc<TaskLabel>>) -> Self {
+    pub fn with_label(mut self, label: Option<Rc<RefCell<TaskLabel>>>) -> Self {
         self.task.label = label;
         self
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct TaskLabel {
-    color: Color,
+    color: RGB,
     short_name: [char; Self::LABEL_LEN],
     long_name: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+pub struct RGB {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
+
+impl RGB {
+    pub fn new(r: u8, g: u8, b: u8) -> Self {
+        Self { r, g, b }
+    }
+    pub fn rat_color(&self) -> Color {
+        Color::Rgb(self.r, self.g, self.b)
+    }
+}
+impl Default for RGB {
+    fn default() -> Self {
+        RGB::new(200, 200, 200)
+    }
 }
 
 impl TaskLabel {
     pub const LABEL_LEN: usize = 4;
 
-    pub fn new(long_name: &str, short_name: &str, color: Color) -> Self {
+    pub fn new(long_name: &str, short_name: &str, rgb: RGB) -> Self {
         let long_name = long_name.to_string();
 
         let short_name = {
@@ -261,12 +440,12 @@ impl TaskLabel {
         Self {
             short_name,
             long_name,
-            color,
+            color: rgb,
         }
     }
 
     pub fn color(&self) -> Color {
-        self.color
+        self.color.rat_color()
     }
     pub fn long_name(&self) -> &str {
         &self.long_name
@@ -280,7 +459,7 @@ impl TaskLabel {
     pub fn as_span(&self) -> Span {
         Span::styled(
             format!("{} ({})", self.long_name(), self.short_name_string()),
-            Style::default().fg(self.color),
+            Style::default().fg(self.color()),
         )
     }
 }

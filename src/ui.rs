@@ -153,7 +153,7 @@ fn summary_block(app: &Venom) -> Paragraph {
     )
 }
 
-fn main_table<'a>(app: &'a Venom) -> Table<'a> {
+fn main_table(app: &Venom) -> Table {
     let header_style = Style::default().fg(Color::default()).underlined();
 
     let due_date_col_name = "Due Date".to_string();
@@ -168,8 +168,12 @@ fn main_table<'a>(app: &'a Venom) -> Table<'a> {
     let label_col_name = "Label".to_string();
     let label_col_name = Span::styled(label_col_name, header_style);
 
+    let done_col_name = "   ".to_string();
+    let done_col_name = Span::styled(done_col_name, Style::default());
+
     let mut rows = vec![Row::new(vec![
         Span::default(),
+        done_col_name,
         title_col_name,
         label_col_name.clone(),
         due_date_col_name.clone(),
@@ -194,11 +198,12 @@ fn main_table<'a>(app: &'a Venom) -> Table<'a> {
 
             let mut label_style = Style::default();
             if task.borrow().label().is_some() {
-                label_style = label_style.fg(task.borrow().label().as_ref().unwrap().color());
+                label_style =
+                    label_style.fg(task.borrow().label().as_ref().unwrap().borrow().color());
             }
             let label_col = match task.borrow().label().as_ref() {
                 None => "".to_string(),
-                Some(label) => label.short_name().iter().collect::<String>(),
+                Some(label) => label.borrow().short_name().iter().collect::<String>(),
             };
             let label_col = Span::styled(label_col, label_style);
 
@@ -214,6 +219,13 @@ fn main_table<'a>(app: &'a Venom) -> Table<'a> {
             };
             let selected_col = Span::styled(selected_col, style);
 
+            let done_col = if task.borrow().is_done() {
+                String::from("[x]")
+            } else {
+                String::from("[ ]")
+            };
+            let done_col = Span::styled(done_col, style);
+
             let due_date_col = task.borrow().date_string();
             let due_time_col = task.borrow().time_string();
             date_constraint = std::cmp::max(date_constraint, due_date_col.len() as u16);
@@ -223,6 +235,7 @@ fn main_table<'a>(app: &'a Venom) -> Table<'a> {
 
             let row = Row::new(vec![
                 selected_col,
+                done_col,
                 content_col,
                 label_col,
                 due_date_col,
@@ -246,6 +259,7 @@ fn main_table<'a>(app: &'a Venom) -> Table<'a> {
         rows,
         Constraint::from_lengths([
             1,
+            3,
             title_constraint + 1,
             5,
             date_constraint + 1,
