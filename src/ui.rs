@@ -66,7 +66,11 @@ fn render_edit_task_popup(app: &mut Venom, frame: &mut Frame) {
         let highlight_color = Color::Rgb(0, 50, 200);
         let inactive_style = Style::default().fg(inactive_color);
         let active_style = Style::default().fg(active_color);
-        let highlight_style = Style::default().fg(highlight_color).bold().italic();
+        let highlight_style = Style::default()
+            .fg(highlight_color)
+            .bold()
+            .italic()
+            .underlined();
 
         let mut field_style = active_style;
         let mut edit_style = inactive_style;
