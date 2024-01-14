@@ -315,7 +315,7 @@ fn main_table(app: &Venom) -> Table {
             .borders(Borders::ALL)
             .border_type(BorderType::Thick)
             .title(
-                Title::from(" Esc: Quit | a: Add | Ent: Edit ")
+                Title::from(" Esc: Quit | a: Add | d: delete |  Ent: Edit Task c|  l: Edit Labels ")
                     .position(ratatui::widgets::block::Position::Bottom),
             ),
     );
