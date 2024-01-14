@@ -54,6 +54,7 @@ impl Venom {
     pub fn new() -> Self {
         let mut app = Self::default();
         app.read_from_file();
+        app.task_db_mut().sort_by_date();
         app
     }
 
