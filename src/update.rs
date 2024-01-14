@@ -63,10 +63,18 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                                     text.push(*c);
                                 }
                             });
-                            app.selected_task()
-                                .borrow_mut()
-                                .set_property_from_str(popup.borrow().property(), &text);
-                            // write save file
+
+                            let task = app.selected_task();
+                            match popup.borrow().property() {
+                                crate::app::EditableTaskProperty::Label => {
+                                    let label = app.task_db().label_by_tag(&text);
+                                    task.borrow_mut().set_label(label);
+                                }
+                                _ => {
+                                    task.borrow_mut()
+                                        .set_property_from_str(popup.borrow().property(), &text);
+                                }
+                            }
                             app.save_file();
                         } else {
                             popup.borrow_mut().text_editor_mut().mode = edtui::EditorMode::Normal
