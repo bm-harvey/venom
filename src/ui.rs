@@ -5,8 +5,8 @@ use crate::app::{self, Venom, VenomFocus};
 use crate::edit_task_popup::EditTaskFocus;
 
 use crate::task::Priority;
-use ratatui::widgets::Clear;
 use ratatui::widgets::block::Title;
+use ratatui::widgets::Clear;
 //use datetime::DatePiece;
 use ratatui::{
     prelude::*,
@@ -154,13 +154,25 @@ fn summary_block(app: &Venom) -> Paragraph {
 
     let active_task_borrow = active_task.borrow();
     let label = active_task_borrow.label();
+    let (label_string, label_color) = if let Some(label) = label {
+        (
+            format!(
+                "{} ({})",
+                label.borrow().long_name(),
+                label.borrow().short_name_string()
+            ),
+            label.borrow().color(),
+        )
+    } else {
+        (String::new(), Color::default())
+    };
+
     //let label = label.clone();
     summary_text.push(Line::from(vec![
         Span::raw("Label   : "),
         match label {
             None => Span::default(),
-            Some(_) => Span::default(),
-            //Some(label) => label.as_span(),
+            Some(_) => Span::styled(label_string, Style::default().fg(label_color)),
         },
     ]));
 
@@ -302,7 +314,10 @@ fn main_table(app: &Venom) -> Table {
             .padding(Padding::new(1, 1, 1, 1))
             .borders(Borders::ALL)
             .border_type(BorderType::Thick)
-            .title(Title::from(" Esc: Quit | a: Add | Ent: Edit ").position(ratatui::widgets::block::Position::Bottom)),
+            .title(
+                Title::from(" Esc: Quit | a: Add | Ent: Edit ")
+                    .position(ratatui::widgets::block::Position::Bottom),
+            ),
     );
     main_table
 }

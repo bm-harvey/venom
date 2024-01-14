@@ -176,7 +176,11 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                                 let color = words[1];
                                 let long_name = words[2..]
                                     .iter()
-                                    .flat_map(|word| word.chars())
+                                    .flat_map(|word| {
+                                        let mut chars = word.chars().collect::<Vec<_>>();
+                                        chars.push(' ');
+                                        chars.into_iter()
+                                    })
                                     .collect::<String>();
                                 match app.task_db().label_by_tag(short_name) {
                                     None => {
@@ -184,7 +188,7 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                                         label
                                             .set_color(color)
                                             .set_tag(short_name)
-                                            .set_name(&long_name);
+                                            .set_name(long_name.trim_end());
                                         app.task_db_mut().add_label(Rc::new(RefCell::new(label)));
                                     }
                                     Some(label) => {
@@ -212,7 +216,11 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                         let color = words[1];
                         let long_name = words[2..]
                             .iter()
-                            .flat_map(|word| word.chars())
+                            .flat_map(|word| {
+                                let mut chars = word.chars().collect::<Vec<_>>();
+                                chars.push(' ');
+                                chars.into_iter()
+                            })
                             .collect::<String>();
                         match app.task_db().label_by_tag(short_name) {
                             None => {
@@ -220,7 +228,7 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                                 label
                                     .set_color(color)
                                     .set_tag(short_name)
-                                    .set_name(&long_name);
+                                    .set_name(long_name.trim_end());
                                 app.task_db_mut().add_label(Rc::new(RefCell::new(label)));
                             }
                             Some(label) => {
@@ -278,7 +286,11 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                                     let color = words[1];
                                     let long_name = words[2..]
                                         .iter()
-                                        .flat_map(|word| word.chars())
+                                        .flat_map(|word| {
+                                            let mut chars = word.chars().collect::<Vec<_>>();
+                                            chars.push(' ');
+                                            chars.into_iter()
+                                        })
                                         .collect::<String>();
                                     match app.task_db().label_by_tag(short_name) {
                                         None => {
@@ -286,7 +298,7 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                                             label
                                                 .set_color(color)
                                                 .set_tag(short_name)
-                                                .set_name(&long_name);
+                                                .set_name(long_name.trim_end());
                                             app.task_db_mut()
                                                 .add_label(Rc::new(RefCell::new(label)));
                                         }
@@ -295,7 +307,7 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                                                 .borrow_mut()
                                                 .set_color(color)
                                                 .set_tag(short_name)
-                                                .set_name(&long_name);
+                                                .set_name(long_name.trim_end());
                                         }
                                     }
                                 }
@@ -315,7 +327,11 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                             let color = words[1];
                             let long_name = words[2..]
                                 .iter()
-                                .flat_map(|word| word.chars())
+                                .flat_map(|word| {
+                                    let mut chars = word.chars().collect::<Vec<_>>();
+                                    chars.push(' ');
+                                    chars.into_iter()
+                                })
                                 .collect::<String>();
                             match app.task_db().label_by_tag(short_name) {
                                 None => {
@@ -323,7 +339,7 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                                     label
                                         .set_color(color)
                                         .set_tag(short_name)
-                                        .set_name(&long_name);
+                                        .set_name(long_name.trim_end());
                                     app.task_db_mut().add_label(Rc::new(RefCell::new(label)));
                                 }
                                 Some(label) => {
