@@ -23,6 +23,11 @@ impl TaskDB {
         Self::default()
     }
 
+    pub fn sort_by_date(&mut self) {
+        self.tasks
+            .sort_by_key(|task| task.borrow().due_date().unwrap_or(Local::now()))
+    }
+
     pub fn remove_task(&mut self, idx: usize) {
         self.tasks.remove(idx);
     }
@@ -488,7 +493,7 @@ impl TaskLabel {
         }
         result
     }
-    pub fn set_color(&mut self, color: &str) -> &mut Self{
+    pub fn set_color(&mut self, color: &str) -> &mut Self {
         self.color_str = color.to_string();
         self
     }
@@ -502,7 +507,7 @@ impl TaskLabel {
         self
     }
 
-    pub fn color_string(&self) -> &str{
+    pub fn color_string(&self) -> &str {
         &self.color_str
     }
     pub fn color(&self) -> Color {

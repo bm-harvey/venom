@@ -75,6 +75,7 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                                         .set_property_from_str(popup.borrow().property(), &text);
                                 }
                             }
+                            app.task_db_mut().sort_by_date();
                             app.save_file();
                         } else {
                             popup.borrow_mut().text_editor_mut().mode = edtui::EditorMode::Normal
@@ -110,6 +111,7 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                                         );
                                     }
                                 }
+                                app.task_db_mut().sort_by_date();
                                 app.save_file();
                             } else {
                                 popup.borrow_mut().text_editor_mut().mode =
