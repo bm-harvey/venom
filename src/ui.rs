@@ -26,15 +26,41 @@ pub fn render(app: &mut Venom, f: &mut Frame) {
     f.render_widget(main_table, layout[0]);
     f.render_widget(summary_block, layout[1]);
 
-    if let VenomFocus::EditPopup(_) = app.focus() {
+    if let VenomFocus::EditTaskPopup(_) = app.focus() {
         render_edit_task_popup(app, f);
+    }
+    if let VenomFocus::EditLabelsPopup(_) = app.focus() {
+        render_edit_label_popup(app, f);
+    }
+}
+fn render_edit_label_popup(app: &mut Venom, frame: &mut Frame) {
+    let area = centered_rect(frame.size(), 60, 50);
+    if let VenomFocus::EditLabelsPopup(popup) = app.focus() {
+        let edit_block = Block::default()
+            .title(" Editing: Labels ")
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
+            .set_style(Style::default());
+        let editor_theme = edtui::EditorTheme::default()
+            .block(edit_block)
+            .base(Style::default())
+            .cursor_style(match popup.borrow().text_editor().mode {
+                edtui::EditorMode::Insert => Style::default().bg(Color::LightCyan).fg(Color::Black),
+                _ => Style::default().fg(Color::Black).bg(Color::White),
+            })
+            .hide_status_line();
+
+        let mut borrow = popup.borrow_mut();
+        let edit_paragraph = borrow.text_editor_widget().theme(editor_theme);
+        frame.render_widget(Clear, area);
+        frame.render_widget(edit_paragraph, area);
     }
 }
 
 fn render_edit_task_popup(app: &mut Venom, frame: &mut Frame) {
     let area = centered_rect(frame.size(), 60, 50);
 
-    if let VenomFocus::EditPopup(popup) = app.focus() {
+    if let VenomFocus::EditTaskPopup(popup) = app.focus() {
         let active_color = Color::default();
         let inactive_color = Color::DarkGray;
         let highlight_color = Color::Rgb(0, 50, 200);
@@ -105,6 +131,9 @@ fn render_edit_task_popup(app: &mut Venom, frame: &mut Frame) {
 }
 
 fn summary_block(app: &Venom) -> Paragraph {
+    if app.task_db().is_empty() {
+        return Paragraph::default();
+    }
     let active_task = app.task_db().task(app.selected_task_idx()).unwrap();
     let prio = active_task.borrow().priority();
     let (color, word) = prio.formatting();
@@ -260,7 +289,7 @@ fn main_table(app: &Venom) -> Table {
         Constraint::from_lengths([
             1,
             3,
-            title_constraint + 1,
+            std::cmp::max(title_constraint + 1, 6),
             5,
             date_constraint + 1,
             time_constraint + 1,

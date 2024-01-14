@@ -1,10 +1,10 @@
+use crate::edit_labels_popup::EditLabelsPopup;
 use crate::edit_task_popup::EditTaskPopup;
-use crate::task::{self, Task, TaskLabel, RGB};
+use crate::task::{self, Task}; 
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
 
-use chrono::{Local, NaiveDateTime};
 use std::cell::RefCell;
 use std::rc::Rc;
 use strum;
@@ -24,7 +24,8 @@ pub struct Venom {
 pub enum VenomFocus {
     #[default]
     MainView,
-    EditPopup(Rc<RefCell<EditTaskPopup>>),
+    EditTaskPopup(Rc<RefCell<EditTaskPopup>>),
+    EditLabelsPopup(Rc<RefCell<EditLabelsPopup>>),
 }
 
 #[derive(
@@ -43,17 +44,27 @@ pub enum VenomFocus {
 pub enum EditableTaskProperty {
     #[default]
     Title,
-    Notes,
-    DueDate,
     Label,
+    DueDate,
+    Notes,
+    Priority,
 }
 
-use crate::task::Priority;
 impl Venom {
     pub fn new() -> Self {
         let mut app = Self::default();
         app.read_from_file();
         app
+    }
+
+    pub fn tick(&self) {}
+
+    pub fn quit(&mut self) {
+        self.should_quit = true;
+    }
+
+    pub fn remove_selected_task(&mut self) {
+        self.task_db.remove_task(self.selected_task_idx());
     }
 
     pub fn save_file(&self) {
@@ -66,6 +77,7 @@ impl Venom {
         let bytes = serde_json::to_vec_pretty(self.task_db()).unwrap();
         file.write_all(&bytes).unwrap();
     }
+
     pub fn read_from_file(&mut self) {
         let file_path = self.save_path();
         let file = File::open(file_path.to_str().unwrap());
@@ -105,91 +117,6 @@ impl Venom {
         self.task_db.tasks()[self.selected_task_idx].clone()
     }
 
-    pub fn new_example() -> Self {
-        let mut result = Self::default();
-
-        let personal_label = Rc::new(RefCell::new(TaskLabel::new(
-            "Personal",
-            "PSNL",
-            RGB::new(0, 0, 200),
-        )));
-        let research_label = Rc::new(RefCell::new(TaskLabel::new(
-            "Research",
-            "RSCH",
-            RGB::new(200, 30, 200),
-        )));
-        let class_label = Rc::new(RefCell::new(TaskLabel::new(
-            "Class",
-            "CLSS",
-            RGB::new(200, 120, 0),
-        )));
-
-        let date = chrono::NaiveDate::from_ymd_opt(2024, 4, 30).unwrap();
-        let time = chrono::NaiveTime::from_hms_opt(15, 30, 0).unwrap();
-        let naive_dt = NaiveDateTime::new(date, time);
-        let date_2 = naive_dt.and_local_timezone(Local).unwrap();
-        let date_1 = Local::now();
-
-        result.task_db.add_label(personal_label);
-        result.task_db.add_label(research_label);
-        result.task_db.add_label(class_label);
-
-        let task_db = &mut result.task_db;
-
-        let example_task_1 = Task::builder()
-            .with_title("Do Homework")
-            .with_notes("Problems 1-7 on page 323 of Krane\nProblems 1-2 on page 324")
-            .with_priority(Priority::Medium)
-            .with_label(task_db.label_by_tag("CLSS"))
-            .build();
-
-        let example_task_2 = Task::builder()
-            .with_title("Call Doctor")
-            .with_notes("(123) 456-7890")
-            .with_priority(Priority::Low)
-            .with_due_date(Some(date_1))
-            .with_label(task_db.label_by_tag("PSNL"))
-            .build();
-
-        let example_task_3 = Task::builder()
-            .with_title("Write Paper")
-            .with_notes("Section 4 requires major revision")
-            .with_priority(Priority::High)
-            .with_due_date(Some(date_2))
-            .with_label(task_db.label_by_tag("RSCH"))
-            .build();
-
-        let example_task_4 = Task::builder()
-            .with_title("Write Other Paper")
-            .with_notes("Oh yeah I have another paper to write")
-            .with_due_date(Some(date_2))
-            .with_label(task_db.label_by_tag("RSCH"))
-            .build();
-
-        let example_task_5 = Task::builder()
-            .with_title("Write a todo app in rust")
-            .with_notes("Has to be in rust")
-            .with_due_date(Some(date_1))
-            .with_label(task_db.label_by_tag("PSNL"))
-            .with_priority(Priority::High)
-            .build();
-
-        task_db.add_task(example_task_1);
-        task_db.add_task(example_task_2);
-        task_db.add_task(example_task_3);
-        task_db.add_task(example_task_4);
-        task_db.add_task(example_task_5);
-
-        result
-    }
-
-    /// Handles the tick event of the terminal.
-    pub fn tick(&self) {}
-
-    /// Set should_quit to true to quit the application.
-    pub fn quit(&mut self) {
-        self.should_quit = true;
-    }
 
     pub fn focus(&self) -> &VenomFocus {
         &self.focus
@@ -240,6 +167,13 @@ impl Venom {
         popup
             .borrow_mut()
             .load_text(&self.selected_task().borrow().text_to_edit(property));
-        self.focus = VenomFocus::EditPopup(popup);
+        self.focus = VenomFocus::EditTaskPopup(popup);
+    }
+    pub fn edit_labels(&mut self) {
+        let popup = Rc::new(RefCell::new(EditLabelsPopup::default()));
+        popup
+            .borrow_mut()
+            .load_labels(self.task_db().labels());
+        self.focus = VenomFocus::EditLabelsPopup(popup);
     }
 }

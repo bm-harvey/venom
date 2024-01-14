@@ -4,8 +4,8 @@ pub mod ui;
 pub mod tui;
 pub mod update;
 pub mod task;
-pub mod text_editor;
 pub mod edit_task_popup;
+pub mod edit_labels_popup;
 
 use app::Venom;
 use color_eyre::Result;

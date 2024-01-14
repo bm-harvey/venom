@@ -22,6 +22,9 @@ impl TaskDB {
         Self::default()
     }
 
+    pub fn remove_task(&mut self, idx: usize) {
+        self.tasks.remove(idx);
+    }
     pub fn remove_label(&mut self, tag: &str) {
         let short_name = {
             let mut result = [' '; TaskLabel::LABEL_LEN];
@@ -36,15 +39,18 @@ impl TaskDB {
 
         self.labels
             .retain(|l| l.borrow().short_name() != short_name);
-        self.tasks.retain(|t| {
-            let binding = t.borrow();
-            let l = binding.label();
-            if let Some(l) = l {
-                l.borrow().short_name() != short_name
-            } else {
-                false
-            }
-        });
+        self.tasks
+            .iter()
+            .filter(|t| {
+                let binding = t.borrow();
+                let l = binding.label();
+                if let Some(l) = l {
+                    l.borrow().short_name() == short_name
+                } else {
+                    false
+                }
+            })
+            .for_each(|t| t.borrow_mut().remove_label());
     }
 
     pub fn tasks(&self) -> &[Rc<RefCell<Task>>] {
@@ -53,6 +59,10 @@ impl TaskDB {
 
     pub fn labels(&self) -> &[Rc<RefCell<TaskLabel>>] {
         &self.labels
+    }
+
+    pub fn labels_mut_vec(&mut self) -> &mut Vec<Rc<RefCell<TaskLabel>>> {
+        &mut self.labels
     }
 
     pub fn label_by_tag(&self, tag: &str) -> Option<Rc<RefCell<TaskLabel>>> {
@@ -134,10 +144,21 @@ impl Task {
         }
     }
 
+    pub fn remove_label(&mut self) {
+        self.label = None;
+    }
+
     pub fn text_to_edit(&self, property: EditableTaskProperty) -> String {
         match property {
             EditableTaskProperty::Title => self.title().to_string(),
             EditableTaskProperty::Notes => self.notes().to_string(),
+            EditableTaskProperty::Priority => match self.priority() {
+                Priority::None => "None",
+                Priority::Low => "Low",
+                Priority::Medium => "Medium",
+                Priority::High => "High",
+            }
+            .to_string(),
             EditableTaskProperty::DueDate => {
                 format!("{} {}", self.date_string(), self.time_string())
             }
@@ -158,8 +179,29 @@ impl Task {
             EditableTaskProperty::DueDate => {
                 self.set_date_str(value);
             }
+            EditableTaskProperty::Priority => {
+                match value {
+                    "None" => {
+                        self.set_priority(Priority::None);
+                    }
+                    "Low" => {
+                        self.set_priority(Priority::Low);
+                    }
+                    "Medium" => {
+                        self.set_priority(Priority::Medium);
+                    }
+                    "High" => {
+                        self.set_priority(Priority::High);
+                    }
+                    _ => {}
+                };
+            }
             _ => {}
         }
+    }
+    pub fn set_priority(&mut self, priority: Priority) -> &mut Self {
+        self.priority = priority;
+        self
     }
 
     pub fn builder() -> TaskBuilder {
@@ -392,13 +434,6 @@ impl TaskBuilder {
     }
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct TaskLabel {
-    color: RGB,
-    short_name: [char; Self::LABEL_LEN],
-    long_name: String,
-}
-
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct RGB {
     pub r: u8,
@@ -420,32 +455,57 @@ impl Default for RGB {
     }
 }
 
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct TaskLabel {
+    rgb: RGB,
+    short_name: [char; Self::LABEL_LEN],
+    long_name: String,
+}
+
 impl TaskLabel {
     pub const LABEL_LEN: usize = 4;
 
     pub fn new(long_name: &str, short_name: &str, rgb: RGB) -> Self {
         let long_name = long_name.to_string();
 
-        let short_name = {
-            let mut result = [' '; Self::LABEL_LEN];
-            for (idx, val) in short_name.chars().enumerate() {
-                if idx >= Self::LABEL_LEN {
-                    break;
-                }
-                result[idx] = val;
-            }
-            result
-        };
+        let short_name = Self::generate_short_name(short_name);
 
         Self {
             short_name,
             long_name,
-            color: rgb,
+            rgb,
         }
     }
 
+    pub fn generate_short_name(text: &str) -> [char; Self::LABEL_LEN] {
+        let mut result = [' '; Self::LABEL_LEN];
+        for (idx, val) in text.chars().enumerate() {
+            if idx >= Self::LABEL_LEN {
+                break;
+            }
+            result[idx] = val;
+        }
+        result
+    }
+
+    pub fn set_rgb(&mut self, r: u8, g: u8, b: u8) -> &mut Self {
+        self.rgb = RGB::new(r, g, b);
+        self
+    }
+    pub fn set_tag(&mut self, tag: &str) -> &mut Self {
+        self.short_name = Self::generate_short_name(tag);
+        self
+    }
+    pub fn set_name(&mut self, name: &str) -> &mut Self {
+        self.long_name = name.to_string();
+        self
+    }
+
+    pub fn rgb(&self) -> RGB {
+        self.rgb
+    }
     pub fn color(&self) -> Color {
-        self.color.rat_color()
+        self.rgb.rat_color()
     }
     pub fn long_name(&self) -> &str {
         &self.long_name
