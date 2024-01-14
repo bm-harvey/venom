@@ -186,13 +186,15 @@ fn summary_block(app: &Venom) -> Paragraph {
         .map(Line::raw)
         .for_each(|line| summary_text.push(line));
 
-    Paragraph::new(summary_text).block(
-        Block::default()
-            .title(" Summary ")
-            .padding(Padding::new(1, 1, 1, 1))
-            .borders(Borders::ALL)
-            .border_type(BorderType::Thick),
-    )
+    Paragraph::new(summary_text)
+        .wrap(ratatui::widgets::Wrap { trim: true })
+        .block(
+            Block::default()
+                .title(" Summary ")
+                .padding(Padding::new(1, 1, 1, 1))
+                .borders(Borders::ALL)
+                .border_type(BorderType::Thick),
+        )
 }
 
 fn main_table(app: &Venom) -> Table {
