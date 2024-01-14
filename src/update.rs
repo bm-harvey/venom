@@ -27,7 +27,11 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                 KC::Down | KC::Char('j') => app.increment_task_idx(),
                 KC::Up | KC::Char('k') => app.decrement_task_idx(),
                 KC::Char('a') => app.add_task(),
-                KC::Char('e') | KC::Enter => app.edit_task(),
+                KC::Char('e') | KC::Enter => {
+                    if app.selected_task_idx() < app.task_db().len() {
+                        app.edit_task();
+                    }
+                }
                 KC::Char('l') => app.edit_labels(),
                 KC::Char('d') => {
                     app.remove_selected_task();
@@ -158,34 +162,29 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
 
                         if idx.row > previous_row {
                             let words = line.split_whitespace().collect::<Vec<_>>();
-                            if words.len() > 4 {
+                            if words.len() > 2 {
                                 let short_name = words[0];
                                 tags.push(short_name.to_string());
-                                let red = words[1].parse::<u8>();
-                                let green = words[2].parse::<u8>();
-                                let blue = words[3].parse::<u8>();
-                                let long_name = words[4..]
+                                let color = words[1];
+                                let long_name = words[2..]
                                     .iter()
                                     .flat_map(|word| word.chars())
                                     .collect::<String>();
-                                if let (Ok(r), Ok(g), Ok(b)) = (red, green, blue) {
-                                    match app.task_db().label_by_tag(short_name) {
-                                        None => {
-                                            let mut label = TaskLabel::default();
-                                            label
-                                                .set_rgb(r, g, b)
-                                                .set_tag(short_name)
-                                                .set_name(&long_name);
-                                            app.task_db_mut()
-                                                .add_label(Rc::new(RefCell::new(label)));
-                                        }
-                                        Some(label) => {
-                                            label
-                                                .borrow_mut()
-                                                .set_rgb(r, g, b)
-                                                .set_tag(short_name)
-                                                .set_name(&long_name);
-                                        }
+                                match app.task_db().label_by_tag(short_name) {
+                                    None => {
+                                        let mut label = TaskLabel::default();
+                                        label
+                                            .set_color(color)
+                                            .set_tag(short_name)
+                                            .set_name(&long_name);
+                                        app.task_db_mut().add_label(Rc::new(RefCell::new(label)));
+                                    }
+                                    Some(label) => {
+                                        label
+                                            .borrow_mut()
+                                            .set_color(color)
+                                            .set_tag(short_name)
+                                            .set_name(&long_name);
                                     }
                                 }
                             }
@@ -199,33 +198,29 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                         }
                     });
                     let words = line.split_whitespace().collect::<Vec<_>>();
-                    if words.len() > 4 {
+                    if words.len() > 2 {
                         let short_name = words[0];
                         tags.push(short_name.to_string());
-                        let red = words[1].parse::<u8>();
-                        let green = words[2].parse::<u8>();
-                        let blue = words[3].parse::<u8>();
-                        let long_name = words[4..]
+                        let color = words[1];
+                        let long_name = words[2..]
                             .iter()
                             .flat_map(|word| word.chars())
                             .collect::<String>();
-                        if let (Ok(r), Ok(g), Ok(b)) = (red, green, blue) {
-                            match app.task_db().label_by_tag(short_name) {
-                                None => {
-                                    let mut label = TaskLabel::default();
-                                    label
-                                        .set_rgb(r, g, b)
-                                        .set_tag(short_name)
-                                        .set_name(&long_name);
-                                    app.task_db_mut().add_label(Rc::new(RefCell::new(label)));
-                                }
-                                Some(label) => {
-                                    label
-                                        .borrow_mut()
-                                        .set_rgb(r, g, b)
-                                        .set_tag(short_name)
-                                        .set_name(&long_name);
-                                }
+                        match app.task_db().label_by_tag(short_name) {
+                            None => {
+                                let mut label = TaskLabel::default();
+                                label
+                                    .set_color(color)
+                                    .set_tag(short_name)
+                                    .set_name(&long_name);
+                                app.task_db_mut().add_label(Rc::new(RefCell::new(label)));
+                            }
+                            Some(label) => {
+                                label
+                                    .borrow_mut()
+                                    .set_color(color)
+                                    .set_tag(short_name)
+                                    .set_name(&long_name);
                             }
                         }
                     }
@@ -239,6 +234,17 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                     });
                     for s in to_remove {
                         app.task_db_mut().remove_label(&s);
+                    }
+
+                    for task in app.task_db().tasks().iter() {
+                        let mut task = task.borrow_mut();
+                        match task.label() {
+                            None => {}
+                            Some(label) => {
+                                let tag = label.borrow().short_name().iter().collect::<String>();
+                                task.set_label(app.task_db().label_by_tag(&tag));
+                            }
+                        }
                     }
 
                     app.save_file();
@@ -258,34 +264,30 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
 
                             if idx.row > previous_row {
                                 let words = line.split_whitespace().collect::<Vec<_>>();
-                                if words.len() > 4 {
+                                if words.len() > 2 {
                                     let short_name = words[0];
                                     tags.push(short_name.to_string());
-                                    let red = words[1].parse::<u8>();
-                                    let green = words[2].parse::<u8>();
-                                    let blue = words[3].parse::<u8>();
-                                    let long_name = words[4..]
+                                    let color = words[1];
+                                    let long_name = words[2..]
                                         .iter()
                                         .flat_map(|word| word.chars())
                                         .collect::<String>();
-                                    if let (Ok(r), Ok(g), Ok(b)) = (red, green, blue) {
-                                        match app.task_db().label_by_tag(short_name) {
-                                            None => {
-                                                let mut label = TaskLabel::default();
-                                                label
-                                                    .set_rgb(r, g, b)
-                                                    .set_tag(short_name)
-                                                    .set_name(&long_name);
-                                                app.task_db_mut()
-                                                    .add_label(Rc::new(RefCell::new(label)));
-                                            }
-                                            Some(label) => {
-                                                label
-                                                    .borrow_mut()
-                                                    .set_rgb(r, g, b)
-                                                    .set_tag(short_name)
-                                                    .set_name(&long_name);
-                                            }
+                                    match app.task_db().label_by_tag(short_name) {
+                                        None => {
+                                            let mut label = TaskLabel::default();
+                                            label
+                                                .set_color(color)
+                                                .set_tag(short_name)
+                                                .set_name(&long_name);
+                                            app.task_db_mut()
+                                                .add_label(Rc::new(RefCell::new(label)));
+                                        }
+                                        Some(label) => {
+                                            label
+                                                .borrow_mut()
+                                                .set_color(color)
+                                                .set_tag(short_name)
+                                                .set_name(&long_name);
                                         }
                                     }
                                 }
@@ -299,33 +301,29 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                             }
                         });
                         let words = line.split_whitespace().collect::<Vec<_>>();
-                        if words.len() > 4 {
+                        if words.len() > 2 {
                             let short_name = words[0];
                             tags.push(short_name.to_string());
-                            let red = words[1].parse::<u8>();
-                            let green = words[2].parse::<u8>();
-                            let blue = words[3].parse::<u8>();
-                            let long_name = words[4..]
+                            let color = words[1];
+                            let long_name = words[2..]
                                 .iter()
                                 .flat_map(|word| word.chars())
                                 .collect::<String>();
-                            if let (Ok(r), Ok(g), Ok(b)) = (red, green, blue) {
-                                match app.task_db().label_by_tag(short_name) {
-                                    None => {
-                                        let mut label = TaskLabel::default();
-                                        label
-                                            .set_rgb(r, g, b)
-                                            .set_tag(short_name)
-                                            .set_name(&long_name);
-                                        app.task_db_mut().add_label(Rc::new(RefCell::new(label)));
-                                    }
-                                    Some(label) => {
-                                        label
-                                            .borrow_mut()
-                                            .set_rgb(r, g, b)
-                                            .set_tag(short_name)
-                                            .set_name(&long_name);
-                                    }
+                            match app.task_db().label_by_tag(short_name) {
+                                None => {
+                                    let mut label = TaskLabel::default();
+                                    label
+                                        .set_color(color)
+                                        .set_tag(short_name)
+                                        .set_name(&long_name);
+                                    app.task_db_mut().add_label(Rc::new(RefCell::new(label)));
+                                }
+                                Some(label) => {
+                                    label
+                                        .borrow_mut()
+                                        .set_color(color)
+                                        .set_tag(short_name)
+                                        .set_name(&long_name);
                                 }
                             }
                         }
@@ -341,6 +339,17 @@ pub fn update(app: &mut Venom, key_event: KeyEvent) {
                             app.task_db_mut().remove_label(&s);
                         }
 
+                        for task in app.task_db().tasks().iter() {
+                            let mut task = task.borrow_mut();
+                            match task.label() {
+                                None => {}
+                                Some(label) => {
+                                    let tag =
+                                        label.borrow().short_name().iter().collect::<String>();
+                                    task.set_label(app.task_db().label_by_tag(&tag));
+                                }
+                            }
+                        }
                         app.save_file();
                         app.set_mode(VenomFocus::MainView);
                     }

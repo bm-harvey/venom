@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::str::FromStr;
 
 use chrono::{DateTime, Local};
 use chrono::{Datelike, Timelike};
@@ -457,15 +458,15 @@ impl Default for RGB {
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct TaskLabel {
-    rgb: RGB,
     short_name: [char; Self::LABEL_LEN],
     long_name: String,
+    color_str: String,
 }
 
 impl TaskLabel {
     pub const LABEL_LEN: usize = 4;
 
-    pub fn new(long_name: &str, short_name: &str, rgb: RGB) -> Self {
+    pub fn new(long_name: &str, short_name: &str, color_str: &str) -> Self {
         let long_name = long_name.to_string();
 
         let short_name = Self::generate_short_name(short_name);
@@ -473,7 +474,7 @@ impl TaskLabel {
         Self {
             short_name,
             long_name,
-            rgb,
+            color_str: color_str.to_string(),
         }
     }
 
@@ -487,11 +488,11 @@ impl TaskLabel {
         }
         result
     }
-
-    pub fn set_rgb(&mut self, r: u8, g: u8, b: u8) -> &mut Self {
-        self.rgb = RGB::new(r, g, b);
+    pub fn set_color(&mut self, color: &str) -> &mut Self{
+        self.color_str = color.to_string();
         self
     }
+
     pub fn set_tag(&mut self, tag: &str) -> &mut Self {
         self.short_name = Self::generate_short_name(tag);
         self
@@ -501,12 +502,13 @@ impl TaskLabel {
         self
     }
 
-    pub fn rgb(&self) -> RGB {
-        self.rgb
+    pub fn color_string(&self) -> &str{
+        &self.color_str
     }
     pub fn color(&self) -> Color {
-        self.rgb.rat_color()
+        Color::from_str(&self.color_str).unwrap_or(Color::default())
     }
+
     pub fn long_name(&self) -> &str {
         &self.long_name
     }

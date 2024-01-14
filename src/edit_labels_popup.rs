@@ -23,13 +23,11 @@ impl EditLabelsPopup {
             }
 
             let label = label.borrow();
-            let rgb = label.rgb();
+            let color = label.color_string();
             let line = format!(
-                "{} {} {} {} {}",
+                "{} {} {}",
                 label.short_name().iter().collect::<String>(),
-                rgb.r,
-                rgb.g,
-                rgb.b,
+                color,
                 label.long_name()
             );
             text.push_str(&line);
