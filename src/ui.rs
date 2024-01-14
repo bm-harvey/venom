@@ -63,7 +63,7 @@ fn render_edit_task_popup(app: &mut Venom, frame: &mut Frame) {
     if let VenomFocus::EditTaskPopup(popup) = app.focus() {
         let active_color = Color::default();
         let inactive_color = Color::DarkGray;
-        let highlight_color = Color::Rgb(0, 50, 200);
+        let highlight_color = Color::Blue;
         let inactive_style = Style::default().fg(inactive_color);
         let active_style = Style::default().fg(active_color);
         let highlight_style = Style::default()
