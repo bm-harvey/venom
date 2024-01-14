@@ -6,6 +6,7 @@ use crate::edit_task_popup::EditTaskFocus;
 
 use crate::task::Priority;
 use ratatui::widgets::Clear;
+use ratatui::widgets::block::Title;
 //use datetime::DatePiece;
 use ratatui::{
     prelude::*,
@@ -300,7 +301,8 @@ fn main_table(app: &Venom) -> Table {
             .title(" Tasks ")
             .padding(Padding::new(1, 1, 1, 1))
             .borders(Borders::ALL)
-            .border_type(BorderType::Thick),
+            .border_type(BorderType::Thick)
+            .title(Title::from(" Esc: Quit | a: Add | Ent: Edit ").position(ratatui::widgets::block::Position::Bottom)),
     );
     main_table
 }
