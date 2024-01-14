@@ -1,6 +1,6 @@
 use crate::edit_labels_popup::EditLabelsPopup;
 use crate::edit_task_popup::EditTaskPopup;
-use crate::task::{self, Task}; 
+use crate::task::{self, Task};
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -65,6 +65,7 @@ impl Venom {
 
     pub fn remove_selected_task(&mut self) {
         self.task_db.remove_task(self.selected_task_idx());
+        self.selected_task_idx = std::cmp::min(self.selected_task_idx, self.task_db.len() - 1);
     }
 
     pub fn save_file(&self) {
@@ -116,7 +117,6 @@ impl Venom {
     pub fn selected_task(&self) -> Rc<RefCell<Task>> {
         self.task_db.tasks()[self.selected_task_idx].clone()
     }
-
 
     pub fn focus(&self) -> &VenomFocus {
         &self.focus
@@ -171,9 +171,7 @@ impl Venom {
     }
     pub fn edit_labels(&mut self) {
         let popup = Rc::new(RefCell::new(EditLabelsPopup::default()));
-        popup
-            .borrow_mut()
-            .load_labels(self.task_db().labels());
+        popup.borrow_mut().load_labels(self.task_db().labels());
         self.focus = VenomFocus::EditLabelsPopup(popup);
     }
 }
