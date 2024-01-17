@@ -20,7 +20,7 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
     match focus {
         VenomFocus::MainView => {
             match (ke.code, ke.modifiers) {
-                (KC::Esc, _) => app.quit(),
+                (KC::Esc, _) | (KC::Char('c'), KM::CONTROL) => app.quit(),
                 (KC::Down | KC::Char('j'), _) => app.increment_task_idx(),
                 (KC::Up | KC::Char('k'), _) => app.decrement_task_idx(),
                 (KC::Char('a'), _) => app.add_task(),
@@ -46,7 +46,7 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
             match focus {
                 EditTaskFocus::Edit => match (ke.code, ke.modifiers) {
                     (KC::Esc, _) | (KC::Char('c'), KM::CONTROL) => {
-                        if true {
+                        if popup.borrow().text_editor().mode == edtui::EditorMode::Normal {
                             escape_task_edit(app, &popup)
                         } else {
                             popup.borrow_mut().text_editor_mut().mode = edtui::EditorMode::Normal
@@ -66,6 +66,7 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
                             popup.borrow_mut().increment_property();
                             let property = popup.borrow().property();
                             let text = app.selected_task().borrow().text_to_edit(property);
+                            app.task_db_mut().sort_by_date();
                             popup.borrow_mut().load_text(&text);
                         }
                         (KC::Up | KC::Char('k'), _) => {
@@ -235,6 +236,5 @@ fn escape_task_edit(app: &mut Venom, popup: &RefCell<EditTaskPopup>) {
                 .set_property_from_str(popup.borrow().property(), &text);
         }
     }
-    app.task_db_mut().sort_by_date();
     app.save_file();
 }
