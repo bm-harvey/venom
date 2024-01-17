@@ -34,6 +34,7 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
                     app.remove_selected_task();
                     app.save_file();
                 }
+                (KC::Char('r'), _) => app.add_task_based_on_current(),
                 (KC::Char(' '), _) => {
                     app.toggle_selected_task();
                     app.save_file();

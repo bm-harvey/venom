@@ -163,7 +163,14 @@ impl Venom {
     }
 
     pub fn add_task_based_on_current(&mut self) {
-        let task = Task::builder().build();
+        let current_task= self.selected_task();
+        let current_task_borrow = current_task.borrow();
+        let task = Task::builder()
+            .with_title(current_task_borrow.title())
+            .with_notes(current_task_borrow.notes())
+            .with_due_date(current_task_borrow.due_date())
+            .with_label(current_task_borrow.label().clone())
+            .build();
         self.task_db.add_task(task);
         self.selected_task_idx = self.task_db.len() - 1;
         self.edit_task();
