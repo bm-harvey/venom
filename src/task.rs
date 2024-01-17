@@ -11,7 +11,7 @@ use ratatui::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::app::EditableTaskProperty;
+use crate::venom::EditableTaskProperty;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct TaskDB {

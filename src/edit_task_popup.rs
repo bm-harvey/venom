@@ -1,5 +1,5 @@
 use edtui::{EditorState, EditorView, Lines};
-use crate::app::EditableTaskProperty;
+use crate::venom::EditableTaskProperty;
 use strum::IntoEnumIterator;
 
 /// Popup to edit tasks field-by-field

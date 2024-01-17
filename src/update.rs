@@ -5,8 +5,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 //use serde_json::json;
 
-use crate::app::Venom;
-use crate::app::VenomFocus;
+use crate::venom::Venom;
+use crate::venom::VenomFocus;
 use crate::edit_labels_popup::EditLabelsPopup;
 use crate::edit_task_popup::EditTaskFocus;
 use crate::edit_task_popup::EditTaskPopup;
@@ -230,7 +230,7 @@ fn escape_task_edit(app: &mut Venom, popup: &RefCell<EditTaskPopup>) {
 
     let task = app.selected_task();
     match popup.borrow().property() {
-        crate::app::EditableTaskProperty::Label => {
+        crate::venom::EditableTaskProperty::Label => {
             let label = app.task_db().label_by_tag(&text);
             task.borrow_mut().set_label(label);
         }

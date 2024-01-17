@@ -1,4 +1,4 @@
-pub mod app;
+pub mod venom;
 pub mod event;
 pub mod ui;
 pub mod tui;
@@ -7,7 +7,7 @@ pub mod task;
 pub mod edit_task_popup;
 pub mod edit_labels_popup;
 
-use app::Venom;
+use venom::Venom;
 use color_eyre::Result;
 use event::{Event, EventHandler};
 use ratatui::{backend::CrosstermBackend, Terminal};

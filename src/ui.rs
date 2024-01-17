@@ -1,6 +1,6 @@
 use std::vec;
 
-use crate::app::{self, Venom, VenomFocus};
+use crate::venom::{self, Venom, VenomFocus};
 
 use crate::edit_task_popup::EditTaskFocus;
 
@@ -113,7 +113,7 @@ fn render_edit_task_popup(app: &mut Venom, frame: &mut Frame) {
         let edit_paragraph = pop_borrow.text_editor_widget().theme(editor_theme);
 
         let mut field_rows = vec![];
-        for field in app::EditableTaskProperty::iter() {
+        for field in venom::EditableTaskProperty::iter() {
             let style = if property == field {
                 highlight_style
             } else {
