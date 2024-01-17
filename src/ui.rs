@@ -229,6 +229,7 @@ fn main_table(app: &Venom) -> Table {
     app.task_db()
         .tasks()
         .iter()
+        //.filter(|task| !app.hide_completed() || task.borrow().is_done())
         .enumerate()
         .map(|(idx, task)| {
             let active_task = idx == app.selected_task_idx();

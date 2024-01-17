@@ -17,6 +17,7 @@ pub struct Venom {
     task_db: TaskDB,
     selected_task_idx: usize,
     focus: VenomFocus,
+    hide_completed: bool,
 }
 
 /// The Current Focus of a Venom Application
@@ -62,6 +63,17 @@ impl Venom {
 
     pub fn quit(&mut self) {
         self.should_quit = true;
+    }
+
+    pub fn hide_completed(&self) -> bool {
+        self.hide_completed
+    }
+
+    pub fn set_hide_completed(&mut self, hide_completed: bool) {
+        self.hide_completed = hide_completed;
+    }
+    pub fn toggle_hide_completed(&mut self) {
+        self.hide_completed = !self.hide_completed;
     }
 
     pub fn remove_selected_task(&mut self) {
@@ -163,7 +175,7 @@ impl Venom {
     }
 
     pub fn add_task_based_on_current(&mut self) {
-        let current_task= self.selected_task();
+        let current_task = self.selected_task();
         let current_task_borrow = current_task.borrow();
         let task = Task::builder()
             .with_title(current_task_borrow.title())

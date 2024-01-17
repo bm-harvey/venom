@@ -20,7 +20,7 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
     match focus {
         VenomFocus::MainView => {
             match (ke.code, ke.modifiers) {
-                (KC::Esc, _) | (KC::Char('c'), KM::CONTROL | KM::SUPER) => app.quit(),
+                (KC::Esc, _) | (KC::Char('c'), KM::CONTROL) => app.quit(),
                 (KC::Down | KC::Char('j'), _) => app.increment_task_idx(),
                 (KC::Up | KC::Char('k'), _) => app.decrement_task_idx(),
                 (KC::Char('a'), _) => app.add_task(),
@@ -35,8 +35,10 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
                     app.save_file();
                 }
                 (KC::Char('r'), _) => app.add_task_based_on_current(),
+                //(KC::Char('h'), _) => app.toggle_hide_completed(),
                 (KC::Char(' '), _) => {
                     app.toggle_selected_task();
+                    app.task_db_mut().sort_by_date();
                     app.save_file();
                 }
                 _ => {}
@@ -46,7 +48,7 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
             let focus = popup.borrow().focus();
             match focus {
                 EditTaskFocus::Edit => match (ke.code, ke.modifiers) {
-                    (KC::Esc, _) | (KC::Char('c'), KM::CONTROL | KM::SUPER) => {
+                    (KC::Esc, _) | (KC::Char('c'), KM::CONTROL) => {
                         if popup.borrow().text_editor().mode == edtui::EditorMode::Normal {
                             escape_task_edit(app, &popup)
                         } else {
@@ -60,7 +62,7 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
                 },
                 EditTaskFocus::Fields => {
                     match (ke.code, ke.modifiers) {
-                        (KC::Esc, _) | (KC::Char('c'), KM::CONTROL | KM::SUPER) => {
+                        (KC::Esc, _) | (KC::Char('c'), KM::CONTROL) => {
                             app.task_db_mut().sort_by_date();
                             app.set_mode(VenomFocus::MainView);
                         }
@@ -87,7 +89,7 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
             }
         }
         VenomFocus::EditLabelsPopup(popup) => match (ke.code, ke.modifiers) {
-            (KC::Esc, _) | (KC::Char('c'), KM::CONTROL | KM::SUPER) => {
+            (KC::Esc, _) | (KC::Char('c'), KM::CONTROL) => {
                 if popup.borrow().text_editor().mode != EditorMode::Normal {
                     popup.borrow_mut().text_editor_mut().mode = EditorMode::Normal;
                 } else {

@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::rc::Rc;
 use std::str::FromStr;
 
@@ -24,8 +25,17 @@ impl TaskDB {
     }
 
     pub fn sort_by_date(&mut self) {
-        self.tasks
-            .sort_by_key(|task| task.borrow().due_date().unwrap_or(Local::now()))
+        self.tasks.sort_by(
+            |t1, t2| match (t1.borrow().is_done(), t2.borrow().is_done()) {
+                (true, false) => Ordering::Greater,
+                (false, true) => Ordering::Less,
+                (_, _) => {
+                    let dt1 = t1.borrow().due_date().unwrap_or(Local::now());
+                    let dt2 = t2.borrow().due_date().unwrap_or(Local::now());
+                    dt1.cmp(&dt2)
+                }
+            },
+        )
     }
 
     pub fn remove_task(&mut self, idx: usize) {
