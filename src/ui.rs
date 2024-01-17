@@ -132,10 +132,10 @@ fn render_edit_task_popup(app: &mut Venom, frame: &mut Frame) {
 }
 
 fn summary_block(app: &Venom) -> Paragraph {
-    if app.task_db().is_empty() {
+    if app.task_view().has_no_tasks() {
         return Paragraph::default();
     }
-    let active_task = app.task_db().task(app.selected_task_idx()).unwrap();
+    let active_task = app.selected_task();
     let prio = active_task.borrow().priority();
     let (color, word) = prio.formatting();
 
@@ -226,7 +226,7 @@ fn main_table(app: &Venom) -> Table {
 
     let mut date_constraint = due_date_col_name.width() as u16;
     let mut time_constraint = due_time_col_name.width() as u16;
-    app.task_db()
+    app.task_view()
         .tasks()
         .iter()
         //.filter(|task| !app.hide_completed() || task.borrow().is_done())
@@ -292,7 +292,7 @@ fn main_table(app: &Venom) -> Table {
         .for_each(|row| rows.push(row));
 
     let title_constraint = app
-        .task_db()
+        .task_view()
         .tasks()
         .iter()
         .map(|task| task.borrow().title().len() as u16)

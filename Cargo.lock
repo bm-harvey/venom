@@ -1093,6 +1093,7 @@ dependencies = [
  "crossterm",
  "dirs",
  "edtui",
+ "itertools",
  "ratatui",
  "serde",
  "serde_json",

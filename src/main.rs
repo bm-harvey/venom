@@ -5,6 +5,7 @@ pub mod tui;
 pub mod update;
 pub mod task;
 pub mod edit_task_popup;
+pub mod task_view;
 pub mod edit_labels_popup;
 
 use venom::Venom;

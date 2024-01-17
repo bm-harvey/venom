@@ -5,12 +5,12 @@ use std::cell::RefCell;
 use std::rc::Rc;
 //use serde_json::json;
 
-use crate::venom::Venom;
-use crate::venom::VenomFocus;
 use crate::edit_labels_popup::EditLabelsPopup;
 use crate::edit_task_popup::EditTaskFocus;
 use crate::edit_task_popup::EditTaskPopup;
 use crate::task::TaskLabel;
+use crate::venom::Venom;
+use crate::venom::VenomFocus;
 
 type KC = KeyCode;
 type KM = KeyModifiers;
@@ -24,22 +24,23 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
                 (KC::Down | KC::Char('j'), _) => app.increment_task_idx(),
                 (KC::Up | KC::Char('k'), _) => app.decrement_task_idx(),
                 (KC::Char('a'), _) => app.add_task(),
-                (KC::Char('e') | KC::Enter, _) => {
-                    if app.selected_task_idx() < app.task_db().len() {
-                        app.edit_task();
+                (KC::Enter, _) => {
+                    if app.selected_task_idx() < app.task_view().tasks().len() {
+                        app.edit_current_task();
                     }
                 }
                 (KC::Char('l'), _) => app.edit_labels(),
                 (KC::Char('d'), _) => {
                     app.remove_selected_task();
+                    app.update_view();
                     app.save_file();
                 }
                 (KC::Char('r'), _) => app.add_task_based_on_current(),
                 //(KC::Char('h'), _) => app.toggle_hide_completed(),
                 (KC::Char(' '), _) => {
                     app.toggle_selected_task();
-                    app.task_db_mut().sort_by_date();
                     app.save_file();
+                    app.update_view();
                 }
                 _ => {}
             };
@@ -63,19 +64,20 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
                 EditTaskFocus::Fields => {
                     match (ke.code, ke.modifiers) {
                         (KC::Esc, _) | (KC::Char('c'), KM::CONTROL) => {
-                            app.task_db_mut().sort_by_date();
-                            app.set_mode(VenomFocus::MainView);
+                            app.set_focus(VenomFocus::MainView);
+                            app.update_view();
                         }
                         (KC::Down | KC::Char('j'), _) => {
                             popup.borrow_mut().increment_property();
                             let property = popup.borrow().property();
-                            let text = app.selected_task().borrow().text_to_edit(property);
+                            let text = popup.borrow().task().borrow().text_to_edit(property);
                             popup.borrow_mut().load_text(&text);
                         }
                         (KC::Up | KC::Char('k'), _) => {
                             popup.borrow_mut().decrement_property();
-                            let text = app
-                                .selected_task()
+                            let text = popup
+                                .borrow()
+                                .task()
                                 .borrow()
                                 .text_to_edit(popup.borrow().property());
                             popup.borrow_mut().load_text(&text);
@@ -188,7 +190,7 @@ fn escape_label_popup(app: &mut Venom, popup: &RefCell<EditLabelsPopup>) {
         }
 
         let mut to_remove = Vec::new();
-        app.task_db_mut().labels_mut_vec().iter().for_each(|label| {
+        app.task_db_mut().labels_mut().iter().for_each(|label| {
             let label_string = label.borrow().short_name_string();
             if !tags.contains(&label_string) {
                 to_remove.push(label_string);
@@ -209,7 +211,7 @@ fn escape_label_popup(app: &mut Venom, popup: &RefCell<EditLabelsPopup>) {
             }
         }
         app.save_file();
-        app.set_mode(VenomFocus::MainView);
+        app.set_focus(VenomFocus::MainView);
     }
 }
 
@@ -228,7 +230,8 @@ fn escape_task_edit(app: &mut Venom, popup: &RefCell<EditTaskPopup>) {
         }
     });
 
-    let task = app.selected_task();
+    let popup_binding = popup.borrow();
+    let task = popup_binding.task();
     match popup.borrow().property() {
         crate::venom::EditableTaskProperty::Label => {
             let label = app.task_db().label_by_tag(&text);
@@ -240,4 +243,5 @@ fn escape_task_edit(app: &mut Venom, popup: &RefCell<EditTaskPopup>) {
         }
     }
     app.save_file();
+    app.update_view();
 }

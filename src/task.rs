@@ -1,8 +1,4 @@
-use std::cell::RefCell;
-use std::cmp::Ordering;
-use std::rc::Rc;
-use std::str::FromStr;
-
+use crate::venom::EditableTaskProperty;
 use chrono::{DateTime, Local};
 use chrono::{Datelike, Timelike};
 use ratatui::{
@@ -10,12 +6,20 @@ use ratatui::{
     text::{Line, Span, Text},
 };
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
+use std::cmp::Ordering;
+use std::rc::Rc;
+use std::str::FromStr;
 
-use crate::venom::EditableTaskProperty;
-
+/// Data structure to keep track of the tasks and the labels attatched to them.
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct TaskDB {
+    /// list of all tasks. Tasks are stored as [`Rc<RefCell<Task>>`] for shared mutability - this
+    /// might change in the future.
     tasks: Vec<Rc<RefCell<Task>>>,
+    /// list of all labels. Labels are stored as [`Rc<RefCell<Task>>`] for shared mutability - this
+    /// is unlikely to change in the future. Lablels need to be editable from a task that holds
+    /// them, and the app itself... i think.
     labels: Vec<Rc<RefCell<TaskLabel>>>,
 }
 
@@ -24,63 +28,42 @@ impl TaskDB {
         Self::default()
     }
 
-    pub fn sort_by_date(&mut self) {
-        self.tasks.sort_by(
-            |t1, t2| match (t1.borrow().is_done(), t2.borrow().is_done()) {
-                (true, false) => Ordering::Greater,
-                (false, true) => Ordering::Less,
-                (_, _) => {
-                    let dt1 = t1.borrow().due_date().unwrap_or(Local::now());
-                    let dt2 = t2.borrow().due_date().unwrap_or(Local::now());
-                    dt1.cmp(&dt2)
-                }
-            },
-        )
-    }
-
+    /// Remove a task by idx
     pub fn remove_task(&mut self, idx: usize) {
         self.tasks.remove(idx);
     }
-    pub fn remove_label(&mut self, tag: &str) {
-        let short_name = {
-            let mut result = [' '; TaskLabel::LABEL_LEN];
-            for (idx, val) in tag.chars().enumerate() {
-                if idx >= TaskLabel::LABEL_LEN {
-                    break;
-                }
-                result[idx] = val;
-            }
-            result
-        };
 
-        self.labels
-            .retain(|l| l.borrow().short_name() != short_name);
+    /// Remove a label. To fully remove a label, one needs to remove it from all of the tasks as
+    /// well.
+    pub fn remove_label(&mut self, tag: &str) {
+        let tag = TaskLabel::generate_short_name(tag);
+
+        self.labels.retain(|l| l.borrow().short_name() != tag);
+
         self.tasks
             .iter()
-            .filter(|t| {
-                let binding = t.borrow();
-                let l = binding.label();
-                if let Some(l) = l {
-                    l.borrow().short_name() == short_name
-                } else {
-                    false
+            .filter(|task| {
+                let binding = task.borrow();
+                let label = binding.label();
+                match label {
+                    Some(label) => label.borrow().short_name() == tag,
+                    None => false,
                 }
             })
-            .for_each(|t| t.borrow_mut().remove_label());
+            .for_each(|task| task.borrow_mut().remove_label());
     }
 
-    pub fn tasks(&self) -> &[Rc<RefCell<Task>>] {
-        &self.tasks
-    }
-
-    pub fn labels(&self) -> &[Rc<RefCell<TaskLabel>>] {
+    /// Labels list
+    pub fn labels(&self) -> &Vec<Rc<RefCell<TaskLabel>>> {
         &self.labels
     }
 
-    pub fn labels_mut_vec(&mut self) -> &mut Vec<Rc<RefCell<TaskLabel>>> {
+    /// Mutable labels list
+    pub fn labels_mut(&mut self) -> &mut Vec<Rc<RefCell<TaskLabel>>> {
         &mut self.labels
     }
 
+    /// Find the first label by its tag
     pub fn label_by_tag(&self, tag: &str) -> Option<Rc<RefCell<TaskLabel>>> {
         let short_name = {
             let mut result = [' '; TaskLabel::LABEL_LEN];
@@ -98,46 +81,85 @@ impl TaskDB {
             .cloned()
     }
 
-    pub fn tasks_mut(&mut self) -> &mut [Rc<RefCell<Task>>] {
+    pub fn tasks(&self) -> &Vec<Rc<RefCell<Task>>> {
+        &self.tasks
+    }
+
+    pub fn tasks_iter(&self) -> impl Iterator<Item = &Rc<RefCell<Task>>> {
+        self.tasks.iter()
+    }
+    pub fn tasks_mut(&mut self) -> &mut Vec<Rc<RefCell<Task>>> {
         &mut self.tasks
     }
 
-    pub fn len(&self) -> usize {
+    pub fn num_tasks(&self) -> usize {
         self.tasks.len()
     }
-    pub fn is_empty(&self) -> bool {
+
+    pub fn has_no_tasks(&self) -> bool {
         self.tasks.is_empty()
     }
 
+    pub fn has_tasks(&self) -> bool {
+        !self.has_no_tasks()
+    }
+
     pub fn add_default(&mut self) -> &mut Self {
-        self.tasks.push(Rc::new(RefCell::new(Task::default())));
+        self.tasks.push(Task::default_rcc());
         self
     }
 
+    /// pull a task by cloning the [`Rc`] by index.
     pub fn task(&self, idx: usize) -> Option<Rc<RefCell<Task>>> {
-        if idx < self.tasks.len() {
-            Some(self.tasks[idx].clone())
-        } else {
-            None
+        match idx {
+            idx if idx < self.num_tasks() => Some(Rc::clone(&self.tasks[idx])),
+            _ => None,
         }
     }
 
-    pub fn add_task(&mut self, task: Task) -> &mut Self {
+    /// insert a task
+    pub fn add_raw_task(&mut self, task: Task) -> &mut Self {
         self.tasks.push(Rc::new(RefCell::new(task)));
         self
     }
 
+    /// insert a task
+    pub fn add_task(&mut self, task: Rc<RefCell<Task>>) -> &mut Self {
+        self.tasks.push(task);
+        self
+    }
+
+    /// insert a label
     pub fn add_raw_label(&mut self, label: TaskLabel) -> &mut Self {
         self.labels.push(Rc::new(RefCell::new(label)));
         self
     }
 
+    /// add a label from a constructed [`Rc<RefCell<_>>`]
     pub fn add_label(&mut self, label: Rc<RefCell<TaskLabel>>) -> &mut Self {
         self.labels.push(label);
         self
     }
+
+    /// Sort the tasks by doneness and date. This is to be removed in favor of views
+    /// todo
+    pub fn sort_by_date(&mut self) {
+        self.tasks.sort_by(|t1, t2| {
+            let (t1, t2) = (t1.borrow(), t2.borrow());
+            match (t1.is_done(), t2.is_done()) {
+                (true, false) => Ordering::Greater,
+                (false, true) => Ordering::Less,
+                (_, _) => {
+                    let dt1 = t1.due_date().unwrap_or(Local::now());
+                    let dt2 = t2.due_date().unwrap_or(Local::now());
+                    dt1.cmp(&dt2)
+                }
+            }
+        })
+    }
 }
 
+/// Task that can be marked done or not
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Task {
     title: String,
@@ -160,6 +182,10 @@ impl Task {
         }
     }
 
+    pub fn default_rcc() -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(Self::default()))
+    }
+
     pub fn remove_label(&mut self) {
         self.label = None;
     }
@@ -168,19 +194,13 @@ impl Task {
         match property {
             EditableTaskProperty::Title => self.title().to_string(),
             EditableTaskProperty::Notes => self.notes().to_string(),
-            EditableTaskProperty::Priority => match self.priority() {
-                Priority::None => "None",
-                Priority::Low => "Low",
-                Priority::Medium => "Medium",
-                Priority::High => "High",
-            }
-            .to_string(),
+            EditableTaskProperty::Priority => self.priority().to_string(),
             EditableTaskProperty::DueDate => {
                 format!("{} {}", self.date_string(), self.time_string())
             }
             EditableTaskProperty::Label => match self.label() {
-                None => "".to_string(),
                 Some(label) => label.borrow().short_name().iter().collect(),
+                None => "".to_string(),
             },
         }
     }
@@ -215,6 +235,7 @@ impl Task {
             _ => {}
         }
     }
+
     pub fn set_priority(&mut self, priority: Priority) -> &mut Self {
         self.priority = priority;
         self
@@ -377,7 +398,7 @@ impl Task {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, strum::Display)]
 pub enum Priority {
     #[default]
     None,
@@ -402,10 +423,10 @@ impl Priority {
 
     pub fn formatting(&self) -> (Color, String) {
         match self {
-            Self::None => (Color::default(), "".to_string()),
-            Self::Low => (Color::Green, "Low".to_string()),
-            Self::Medium => (Color::Yellow, "Medium".to_string()),
-            Self::High => (Color::Red, "High".to_string()),
+            Self::None => (Color::default(), self.to_string()),
+            Self::Low => (Color::Green, self.to_string()),
+            Self::Medium => (Color::Yellow, self.to_string()),
+            Self::High => (Color::Red, self.to_string()),
         }
     }
 }
@@ -422,6 +443,10 @@ impl TaskBuilder {
 
     pub fn build(self) -> Task {
         self.task
+    }
+
+    pub fn build_rcc(self) -> Rc<RefCell<Task>> {
+        Rc::new(RefCell::new(self.task))
     }
 
     pub fn with_title(mut self, title: &str) -> Self {

@@ -1,5 +1,8 @@
-use edtui::{EditorState, EditorView, Lines};
+use crate::task::Task;
 use crate::venom::EditableTaskProperty;
+use edtui::{EditorState, EditorView, Lines};
+use std::cell::RefCell;
+use std::rc::Rc;
 use strum::IntoEnumIterator;
 
 /// Popup to edit tasks field-by-field
@@ -8,6 +11,7 @@ pub struct EditTaskPopup {
     property: EditableTaskProperty,
     text_editor: EditorState,
     focus: EditTaskFocus,
+    task: Rc<RefCell<Task>>,
 }
 
 /// Current focus of the Task Editor Popup
@@ -19,8 +23,21 @@ pub enum EditTaskFocus {
 }
 
 impl EditTaskPopup {
+    pub fn new(task: &Rc<RefCell<Task>>) -> Self {
+        Self {
+            property: EditableTaskProperty::default(),
+            text_editor: EditorState::default(),
+            focus: EditTaskFocus::default(),
+            task: Rc::clone(task),
+        }
+    }
+
     pub fn property(&self) -> EditableTaskProperty {
         self.property
+    }
+
+    pub fn task(&self) -> &Rc<RefCell<Task>> {
+        &self.task
     }
 
     pub fn focus(&self) -> EditTaskFocus {
