@@ -60,13 +60,13 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
                 EditTaskFocus::Fields => {
                     match (ke.code, ke.modifiers) {
                         (KC::Esc, _) | (KC::Char('c'), KM::CONTROL) => {
+                            app.task_db_mut().sort_by_date();
                             app.set_mode(VenomFocus::MainView);
                         }
                         (KC::Down | KC::Char('j'), _) => {
                             popup.borrow_mut().increment_property();
                             let property = popup.borrow().property();
                             let text = app.selected_task().borrow().text_to_edit(property);
-                            app.task_db_mut().sort_by_date();
                             popup.borrow_mut().load_text(&text);
                         }
                         (KC::Up | KC::Char('k'), _) => {

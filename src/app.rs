@@ -162,6 +162,13 @@ impl Venom {
         self.edit_task();
     }
 
+    pub fn add_task_based_on_current(&mut self) {
+        let task = Task::builder().build();
+        self.task_db.add_task(task);
+        self.selected_task_idx = self.task_db.len() - 1;
+        self.edit_task();
+    }
+
     pub fn edit_task(&mut self) {
         let popup = Rc::new(RefCell::new(EditTaskPopup::default()));
         let property = popup.borrow().property();
