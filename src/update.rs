@@ -42,6 +42,9 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
                     app.save_file();
                     app.update_view();
                 }
+                (KC::Tab, _) => {
+                    app.toggle_completed_task_view();
+                }
                 _ => {}
             };
         }

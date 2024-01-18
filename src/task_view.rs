@@ -36,11 +36,16 @@ impl TaskView {
         }
     }
 
+
+    pub fn num_tasks(&self) -> usize {
+        self.displayed_tasks.len()
+    }
+
     pub fn generate_displayed_list(&mut self, db: &TaskDB) {
         self.displayed_tasks = db
             .tasks_iter()
             .filter(|task| match self.completed_task_view {
-                CompletedTaskView::Hide => task.borrow().is_done(),
+                CompletedTaskView::Hide => !task.borrow().is_done(),
                 _ => true,
             })
             .cloned()

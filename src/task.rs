@@ -8,6 +8,7 @@ use ratatui::{
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::cmp::Ordering;
+use std::ptr::eq;
 use std::rc::Rc;
 use std::str::FromStr;
 
@@ -29,8 +30,12 @@ impl TaskDB {
     }
 
     /// Remove a task by idx
-    pub fn remove_task(&mut self, idx: usize) {
-        self.tasks.remove(idx);
+    pub fn remove_task(&mut self, task: &Rc<RefCell<Task>>) {
+        let rm_idx = self.tasks.iter().position(|t| Rc::ptr_eq(t, task));
+
+        if let Some(rm_idx) = rm_idx {
+            self.tasks.remove(rm_idx);
+        }
     }
 
     /// Remove a label. To fully remove a label, one needs to remove it from all of the tasks as

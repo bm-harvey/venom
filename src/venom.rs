@@ -118,7 +118,8 @@ impl Venom {
 
     /// Remove the selected task in the current view from the database
     pub fn remove_selected_task(&mut self) {
-        self.task_db.remove_task(self.selected_task_idx());
+        let task = self.selected_task();
+        self.task_db.remove_task(&task);
         self.selected_task_idx =
             std::cmp::min(self.selected_task_idx, self.task_db.num_tasks() - 1);
     }
@@ -126,6 +127,11 @@ impl Venom {
     /// task view
     pub fn task_view(&self) -> &TaskView {
         &self.task_view
+    }
+
+    /// task view
+    pub fn task_view_mut(&mut self) -> &mut TaskView {
+        &mut self.task_view
     }
 
     /// return a shared reference of the task database
@@ -172,7 +178,7 @@ impl Venom {
             return;
         }
 
-        let overflow = self.selected_task_idx + 1 == self.task_db.num_tasks();
+        let overflow = self.selected_task_idx + 1 == self.task_view.num_tasks();
         self.selected_task_idx = if overflow {
             0
         } else {
@@ -189,7 +195,7 @@ impl Venom {
 
         let underflow = self.selected_task_idx == 0;
         self.selected_task_idx = if underflow {
-            self.task_db.num_tasks() - 1
+            self.task_view.num_tasks() - 1
         } else {
             self.selected_task_idx - 1
         }
@@ -197,7 +203,12 @@ impl Venom {
     pub fn update_view(&mut self) {
         self.task_view.generate_displayed_list(&self.task_db);
         self.selected_task_idx =
-            std::cmp::min(self.selected_task_idx(), self.task_view().tasks().len());
+            std::cmp::min(self.selected_task_idx(), self.task_view().tasks().len() - 1);
+    }
+
+    pub fn toggle_completed_task_view(&mut self) {
+        self.task_view_mut().toggle_completed_tasks();
+        self.update_view();
     }
 
     /// Add a blank task and then open up the editing popup for it
@@ -205,8 +216,8 @@ impl Venom {
         let task = Rc::new(RefCell::new(Task::default()));
         self.task_db.add_task(Rc::clone(&task));
         self.selected_task_idx = 0;
-        self.edit_task(task);
         self.update_view();
+        self.edit_task(task);
     }
 
     /// Copy a task and then edit the new one
@@ -259,9 +270,5 @@ impl Venom {
     // todo: remove in favor of views
     pub fn set_hide_completed(&mut self, hide_completed: bool) {
         self.hide_completed = hide_completed;
-    }
-    // todo: remove in favor of views
-    pub fn toggle_hide_completed(&mut self) {
-        self.hide_completed = !self.hide_completed;
     }
 }
