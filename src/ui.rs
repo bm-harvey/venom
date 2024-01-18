@@ -5,7 +5,6 @@ use crate::venom::{self, Venom, VenomFocus};
 use crate::edit_task_popup::EditTaskFocus;
 
 use crate::task::Priority;
-use edtui::view::theme;
 use ratatui::widgets::block::Title;
 use ratatui::widgets::Clear;
 //use datetime::DatePiece;
