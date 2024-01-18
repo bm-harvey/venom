@@ -8,7 +8,6 @@ use ratatui::{
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::ptr::eq;
 use std::rc::Rc;
 use std::str::FromStr;
 

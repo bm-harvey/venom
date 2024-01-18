@@ -202,12 +202,24 @@ impl Venom {
     }
     pub fn update_view(&mut self) {
         self.task_view.generate_displayed_list(&self.task_db);
-        self.selected_task_idx =
-            std::cmp::min(self.selected_task_idx(), self.task_view().tasks().len() - 1);
+
+        self.selected_task_idx = {
+            let num_in_view =  self.task_view().tasks().len(); 
+            if num_in_view == 0 {
+                0
+            } else {
+                std::cmp::min(self.selected_task_idx(), self.task_view().tasks().len() - 1)
+            }
+        }
     }
 
     pub fn toggle_completed_task_view(&mut self) {
         self.task_view_mut().toggle_completed_tasks();
+        self.update_view();
+    }
+
+    pub fn toggle_selected_label(&mut self) {
+        self.task_view_mut().toggle_selected_label();
         self.update_view();
     }
 

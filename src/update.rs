@@ -36,7 +36,6 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
                     app.save_file();
                 }
                 (KC::Char('r'), _) => app.add_task_based_on_current(),
-                //(KC::Char('h'), _) => app.toggle_hide_completed(),
                 (KC::Char(' '), _) => {
                     app.toggle_selected_task();
                     app.save_file();
@@ -44,6 +43,10 @@ pub fn update(app: &mut Venom, ke: KeyEvent) {
                 }
                 (KC::Tab, _) => {
                     app.toggle_completed_task_view();
+                }
+                (KC::Char('f'),    _ ) => {
+                    app.toggle_selected_label();
+
                 }
                 _ => {}
             };

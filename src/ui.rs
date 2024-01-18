@@ -94,8 +94,8 @@ fn render_edit_task_popup(app: &mut Venom, frame: &mut Frame) {
             .set_style(edit_style);
 
         match popup.borrow().focus() {
-            EditTaskFocus::Fields => field_block = field_block.border_type(BorderType::Thick),
-            EditTaskFocus::Edit => edit_block = edit_block.border_type(BorderType::Thick),
+            EditTaskFocus::Fields => field_block = field_block.border_type(BorderType::Double),
+            EditTaskFocus::Edit => edit_block = edit_block.border_type(BorderType::Double),
         }
 
         let property = popup.borrow().property();
@@ -193,7 +193,7 @@ fn summary_block(app: &Venom) -> Paragraph {
                 .title(" Summary ")
                 .padding(Padding::new(1, 1, 1, 1))
                 .borders(Borders::ALL)
-                .border_type(BorderType::Thick),
+                .border_type(BorderType::Rounded),
         )
 }
 
@@ -316,7 +316,7 @@ fn main_table(app: &Venom) -> Table {
             .title(" Tasks ")
             .padding(Padding::new(1, 1, 1, 1))
             .borders(Borders::ALL)
-            .border_type(BorderType::Thick)
+            .border_type(BorderType::Rounded)
             .title(
                 Title::from(" Esc: Quit | a: Add | d: delete |  Ent: Edit Task |  l: Edit Labels ")
                     .position(ratatui::widgets::block::Position::Bottom),
