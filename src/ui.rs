@@ -5,6 +5,7 @@ use crate::venom::{self, Venom, VenomFocus};
 use crate::edit_task_popup::EditTaskFocus;
 
 use crate::task::Priority;
+use edtui::view::theme;
 use ratatui::widgets::block::Title;
 use ratatui::widgets::Clear;
 //use datetime::DatePiece;
@@ -212,17 +213,20 @@ fn main_table(app: &Venom) -> Table {
     let label_col_name = "Label".to_string();
     let label_col_name = Span::styled(label_col_name, header_style);
 
-    let done_col_name = "   ".to_string();
+    let done_col_name = "".to_string();
     let done_col_name = Span::styled(done_col_name, Style::default());
 
-    let mut rows = vec![Row::new(vec![
+    let header_row = Row::new(vec![
         Span::default(),
         done_col_name,
-        title_col_name,
         label_col_name.clone(),
+        title_col_name,
         due_date_col_name.clone(),
         due_time_col_name.clone(),
-    ])];
+    ]);
+
+
+    let mut rows = vec![];
 
     let mut date_constraint = due_date_col_name.width() as u16;
     let mut time_constraint = due_time_col_name.width() as u16;
@@ -234,7 +238,7 @@ fn main_table(app: &Venom) -> Table {
         .map(|(idx, task)| {
             let active_task = idx == app.selected_task_idx();
 
-            let color = match task.borrow().priority() {
+            let priority_color = match task.borrow().priority() {
                 Priority::None => Color::default(),
                 Priority::Low => Color::Green,
                 Priority::Medium => Color::Yellow,
@@ -252,37 +256,39 @@ fn main_table(app: &Venom) -> Table {
             };
             let label_col = Span::styled(label_col, label_style);
 
-            let style = Style::default().fg(color);
+            let priority_style = Style::default().fg(priority_color);
             let borrow = task.borrow();
             let content_col = borrow.title().to_string();
-            let content_col = Span::styled(content_col, style);
+            let content_col = Span::styled(content_col, label_style);
 
             let selected_col = if active_task {
                 String::from("*")
             } else {
                 String::from(" ")
             };
-            let selected_col = Span::styled(selected_col, style);
+            let selected_col = Span::styled(selected_col, priority_style);
 
             let done_col = if task.borrow().is_done() {
                 String::from("[x]")
             } else {
                 String::from("[ ]")
             };
-            let done_col = Span::styled(done_col, style);
+            let done_col = Span::styled(done_col, priority_style);
 
             let due_date_col = task.borrow().date_string();
             let due_time_col = task.borrow().time_string();
             date_constraint = std::cmp::max(date_constraint, due_date_col.len() as u16);
             time_constraint = std::cmp::max(time_constraint, due_time_col.len() as u16);
-            let due_date_col = Span::styled(due_date_col, style);
-            let due_time_col = Span::styled(due_time_col, style);
+            //let due_date_col = Span::styled(due_date_col, priority_style);
+            //let due_time_col = Span::styled(due_time_col, priority_style);
+            let due_date_col = Span::raw(due_date_col);
+            let due_time_col = Span::raw(due_time_col);
 
             let row = Row::new(vec![
                 selected_col,
                 done_col,
-                content_col,
                 label_col,
+                content_col,
                 due_date_col,
                 due_time_col,
             ]);
@@ -305,12 +311,13 @@ fn main_table(app: &Venom) -> Table {
         Constraint::from_lengths([
             1,
             3,
-            std::cmp::max(title_constraint + 1, 6),
             5,
+            std::cmp::max(title_constraint + 1, 6),
             date_constraint + 1,
             time_constraint + 1,
         ]),
     )
+    .header(header_row)
     .block(
         Block::default()
             .title(" Tasks ")

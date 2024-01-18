@@ -68,6 +68,7 @@ impl TaskView {
                 None => true,
                 Some(label) => {
                     if let Some(task_label) = task.borrow().label() {
+                        //todo: make this work at the pointer level
                         //Rc::ptr_eq(task_label, label)
                         task_label.borrow().short_name() == label.borrow().short_name()
                     } else {
