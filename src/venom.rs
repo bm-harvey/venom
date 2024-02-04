@@ -204,7 +204,7 @@ impl Venom {
         self.task_view.generate_displayed_list(&self.task_db);
 
         self.selected_task_idx = {
-            let num_in_view =  self.task_view().tasks().len(); 
+            let num_in_view = self.task_view().tasks().len();
             if num_in_view == 0 {
                 0
             } else {
@@ -264,7 +264,7 @@ impl Venom {
         let property = popup.borrow().property();
         popup
             .borrow_mut()
-            .load_text(&self.selected_task().borrow().text_to_edit(property));
+            .load_text(&task.borrow().text_to_edit(property));
         self.focus = VenomFocus::EditTaskPopup(popup);
     }
 
